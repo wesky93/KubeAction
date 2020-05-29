@@ -1,19 +1,9 @@
 name: slack-notiy
-on: 
+on:
     watch:
       types: [started]
 jobs:
-#   authorize:
-#     runs-on: ubuntu-latest
-#     steps:
-#     - uses: octokit/request-action@v2.0.0
-#       with:
-#         route: GET /repos/:repository/collaborators/${{ github.actor }}
-#         repository: ${{ github.repository }}
-#       env:
-#         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   notiy:
-#     needs: [authorize]
     runs-on: ubuntu-latest
     steps:
       - name: Get Error Server 📦

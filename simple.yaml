@@ -1,0 +1,16 @@
+name: slack-notiy
+on:
+  watch:
+    types: [started]
+jobs:
+  notiy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: let's Run!
+        id: request
+        run: echo 'test'
+      - name: run one more time
+        id: request
+        run: |
+          echo 'second' |
+          pip3 list

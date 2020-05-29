@@ -1,0 +1,22 @@
+name: Action In Action
+on:
+  watch:
+    types: [started]
+jobs:
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: git clone
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: env
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install -r requirements.txt
+
+      - name: Simple Run Step WorkFlow
+        run: python3 action_in_action.py
+

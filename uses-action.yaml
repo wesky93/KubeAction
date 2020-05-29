@@ -1,0 +1,17 @@
+name: slack-notiy
+on:
+  watch:
+    types: [started]
+jobs:
+  notiy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: use run!
+        uese: echo 'test'
+#      - name: use uses
+#        id: request
+#        uses: CamiloGarciaLaRotta/watermelon-http-client@v1
+#        with:
+#          url: 'http://console-api.dev.pyengine.net/identity/domain/list'
+#          method: post
+#          - uses: rtCamp/action-slack-notify@v2.0.2
