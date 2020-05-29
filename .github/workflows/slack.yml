@@ -1,0 +1,38 @@
+name: slack-notiy
+on: 
+    watch:
+      types: [started]
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: octokit/request-action@v2.0.0
+      with:
+        route: GET /repos/:repository/collaborators/${{ github.actor }}
+        repository: ${{ github.repository }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  refresh-feed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Error Server 📦
+        id: getDoamin
+        uses: JamesIves/fetch-api-data-action@releases/v1
+        with:
+          ENDPOINT: http://console-api.dev.pyengine.net
+          CONFIGURATION: '{ "method": "POST" }'
+      - id: result
+        uses: gr2m/get-json-paths-action@v1.x
+        with:
+          json: ${{ steps.getDoamin.outputs.response }}
+          first_id: "results[0].domain_id"
+          first_name: "results[0].name"
+          total: "total_count"
+      - uses: rtCamp/action-slack-notify@v2.0.2
+        env:
+          SLACK_CHANNEL: '#front-end'
+          SLACK_COLOR: '#6638B6'
+          SLACK_ICON: https://spaceone.console.dev.spaceone.dev/img/brand_logo.c3ef8139.png
+          SLACK_MESSAGE: '총 ${{ steps.result.outputs.total }}개의 도메인이 있어요! \n첫번째 도메인 아이디는 ${{ steps.result.outputs.first_id }}이구\n이름은 ${{ steps.result.outputs.first_name }}이에요!'
+          SLACK_USERNAME: 원이가 알려드림
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
