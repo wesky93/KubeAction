@@ -27,6 +27,7 @@ jobs:
           SLACK_CHANNEL: '#front-end'
           SLACK_COLOR: '#6638B6'
           SLACK_ICON: https://spaceone.console.dev.spaceone.dev/img/brand_logo.c3ef8139.png
-          SLACK_MESSAGE: '총 ${{ fromJSON(steps.getDoamin.outputs.response).total_count }}개의 도메인이 있어요! \n이게 도메인 목록이구요\n ${{ fromJSON(steps.getDoamin.outputs.response).results }}'
+          SLACK_MESSAGE: '${{ steps.getDoamin.outputs.response }}'
+#           SLACK_MESSAGE: '총 ${{ fromJSON(steps.getDoamin.outputs.response).total_count }}개의 도메인이 있어요! \n이게 도메인 목록이구요\n ${{ fromJSON(steps.getDoamin.outputs.response).results }}'
           SLACK_USERNAME: 원이가 알려드림
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
