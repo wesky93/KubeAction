@@ -4,7 +4,7 @@ metadata:
   name: flows.kubeaction.spaceone.dev
 spec:
   scope: Namespaced
-  group: kubeaction.sapceone.dev
+  group: kubeaction.spaceone.dev
   names:
     kind: flow
     plural: flows
