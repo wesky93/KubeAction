@@ -4,12 +4,13 @@ import subprocess
 import kopf
 import kubernetes
 from dotenv import load_dotenv
-
+from pathlib import Path
+home = str(Path.home())
 load_dotenv(verbose=True)
 
 
 def get_token(cluster_name):
-    args = ("~/aws-iam-authenticator", "token", "-i", cluster_name, "--token-only")
+    args = (f"{home}/aws-iam-authenticator", "token", "-i", cluster_name, "--token-only")
     popen = subprocess.Popen(args, stdout=subprocess.PIPE)
     popen.wait()
     return popen.stdout.read().rstrip()
