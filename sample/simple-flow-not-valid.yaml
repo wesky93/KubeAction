@@ -1,7 +1,7 @@
 apiVersion: kubeaction.spaceone.dev/v1
 kind: flow
 metadata:
-  name: simple-flow
+  name: simple-flow-must-fail
 spec:
   jobs:
     notiy:
