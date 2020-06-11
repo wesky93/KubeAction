@@ -62,7 +62,7 @@ def create(body, spec, name, namespace, logger, **kwargs):
         raise kopf.PermanentError("must set more than one job")
 
     wf = make_workflow(name, jobs=jobs)
-    api = kubernetes.client.CoreV1Api()
+    api = kubernetes.client.CustomObjectsApi()
     print('before')
     pprint(wf)
 
