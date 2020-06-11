@@ -1,10 +1,11 @@
 import os
 import subprocess
+from pathlib import Path
 
 import kopf
 import kubernetes
 from dotenv import load_dotenv
-from pathlib import Path
+
 home = str(Path.home())
 load_dotenv(verbose=True)
 
@@ -24,6 +25,7 @@ def config():
     configuration.host = api_endpoint
     configuration.verify_ssl = False
     configuration.debug = True
+    print(api_token)
     configuration.api_key['authorization'] = "Bearer " + api_token
     configuration.assert_hostname = True
     configuration.verify_ssl = False
