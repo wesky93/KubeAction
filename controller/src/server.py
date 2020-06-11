@@ -99,8 +99,7 @@ def create(body, spec, name, namespace, logger, **kwargs):
         raise kopf.PermanentError("must set more than one job")
     config()
     vApi = kubernetes.client.VersionApi()
-    print('version info', vApi.get_code())
-
+    kopf.info(body, reason='log', message=f'version {vApi.get_code()}')
     api = kubernetes.client.CustomObjectsApi()
     obj = api.create_namespaced_custom_object(**make_workflow(name, namespace, jobs=jobs))
 
