@@ -1,33 +1,41 @@
-import os
-
 import kopf
-import kubernetes
-import yaml
 
 
-@kopf.on.create('kubeaction.sapceone.dev', 'v1', 'flow')
-def create_fn(spec, name, namespace, logger, **kwargs):
-    event = spec.get('on')
+@kopf.on.create('kubeaction.spaceone.dev', 'v1', 'flows')
+def create(body, spec, name, namespace, logger, **kwargs):
+    print('body')
+    print(body)
+    print('spec')
+    print(spec)
+    print('name')
+    print(name)
+    print('namepace')
+    print(namespace)
+
+    event = spec.get('event')
     jobs = spec.get('jobs')
     meta = spec.get('meta', {})
-    repo = meta.get('repo')
-    spaceone_meta = meta.get('spaceone')
-    domain_id = spaceone_meta.get('domain_id')
+    if meta:
+        repo = meta.get('repo')
+        spaceone_meta = meta.get('spaceone', {})
+        domain_id = spaceone_meta.get('domain_id')
 
     if not event:
         raise kopf.PermanentError("event(on) must be set")
     if not jobs or len(jobs) < 1:
         raise kopf.PermanentError("must set more than one job")
 
-    path = os.path.join(os.path.dirname(__file__), 'pvc.yaml')
-    tmpl = open(path, 'rt').read()
-    text = tmpl.format(name=name, size=size)
-    data = yaml.safe_load(text)
+    kopf.info(body, reason='Start', message='Create Flow')
 
-    api = kubernetes.client.CoreV1Api()
-    obj = api.create_namespaced_persistent_volume_claim(
-        namespace=namespace,
-        body=data,
-    )
 
-    logger.info(f"PVC child is created: %s", obj)
+@kopf.on.delete('kubeaction.spaceone.dev', 'v1', 'flows')
+def delete(body, spec, name, namespace, logger, **kwargs):
+    event = spec.get('on')
+    jobs = spec.get('jobs')
+    meta = spec.get('meta', {})
+    if meta:
+        repo = meta.get('repo')
+        spaceone_meta = meta.get('spaceone', {})
+        domain_id = spaceone_meta.get('domain_id')
+
+    kopf.info(body, reason='Start', message='Delete Flow')

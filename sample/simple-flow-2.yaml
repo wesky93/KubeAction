@@ -1,0 +1,22 @@
+apiVersion: kubeaction.spaceone.dev/v1
+kind: flow
+metadata:
+  name: simple-flow-2
+spec:
+  event:
+    schedule:
+      - cron:  '*/15 * * * *'
+  jobs:
+    notiy:
+      runs-on: ubuntu-latest
+      steps:
+        - name: let's Run!
+          id: request
+          run: echo 'test'
+        - name: run one more time
+          id: request
+          run: |
+            echo 'second' |
+            pip3 list
+
+
