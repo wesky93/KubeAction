@@ -1,7 +1,7 @@
 import kopf
 
 
-@kopf.on.create('kubeaction.sapceone.dev', 'v1', 'flow')
+@kopf.on.create('kubeaction.spaceone.dev', 'v1', 'flow')
 def create_fn(body, spec, name, namespace, logger, **kwargs):
     event = spec.get('on')
     jobs = spec.get('jobs')
