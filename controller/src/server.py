@@ -100,5 +100,5 @@ def create(body, spec, name, namespace, logger, **kwargs):
     config()
     api = kubernetes.client.CustomObjectsApi()
     obj = api.create_namespaced_custom_object(**make_workflow(name, namespace, jobs=jobs))
-    logger.info(f"create workspace {obj.metadata.name}")
-    kopf.info(body, reason='Start', message='Create Flow')
+
+    kopf.info(body, reason='Create', message=f'Create Workflow {obj.metadata.name}')
