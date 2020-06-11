@@ -3,7 +3,15 @@ import kopf
 
 @kopf.on.create('kubeaction.spaceone.dev', 'v1', 'flows')
 def create(body, spec, name, namespace, logger, **kwargs):
-    print(body,spec,name,namespace)
+    print('body')
+    print(body)
+    print('spec')
+    print(spec)
+    print('name')
+    print(name)
+    print('namepace')
+    print(namespace)
+
     event = spec.get('on')
     jobs = spec.get('jobs')
     meta = spec.get('meta', {})
