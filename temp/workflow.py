@@ -31,9 +31,18 @@ def get_repo_name_version(p: str):
     return data
 
 
-class BaseStep:
-    def __init__(self, working_dir: str, data: dict):
+class SecretsMixin:
+
+    @property
+    def secrets(self):
+        return self.workflow.secrets
+
+
+class BaseStep(SecretsMixin):
+    def __init__(self, workflow, job, working_dir: str, data: dict):
         self._data = data
+        self.workflow = workflow
+        self.job = job
         self.working_dir = working_dir
 
     def id(self):
@@ -72,16 +81,30 @@ def download_docker_image(img: str):
         tag = info[1]
 
     print(f'start download {img_name} with tag {tag}')
-    client.images.pull(img_name, tag=tag)
+    img = client.images.pull(img_name, tag=tag)
     print(f'finish download {img}')
+    return img
+
+
+from os import walk
+
+
+def show_files(p):
+    f = []
+    for (dirpath, dirnames, filenames) in walk(p):
+        f.extend(filenames)
+        f.extend(dirnames)
+        break
+    return f
 
 
 class UsesStep(BaseStep):
-    def __init__(self, working_dir: str, data: dict):
-        super().__init__(working_dir, data)
+    def __init__(self, workflow, job, working_dir: str, data: dict):
+        super().__init__(workflow, job, working_dir, data)
         self.dir = None
         self.repo = None
         self.meta = None
+        self.docker_img = None
 
     def id(self):
         return self._data.get('id')
@@ -90,8 +113,47 @@ class UsesStep(BaseStep):
     def uses(self):
         return self._data.get('uses')
 
+    @property
+    def runtime(self):
+        return self.meta.get('runs', {}).get('using')
+
+    @property
+    def env(self):
+        envs = {
+            k: template_render(v, {"secrets": self.secrets})
+            for k, v in self._data.get('env', {}).items()
+        }
+        print(envs)
+        return envs
+
     def exec(self):
-        pass
+        if self.runtime == 'docker':
+            print('run', f"{self.meta=}")
+            client = docker.from_env()
+            print(show_files(self.working_dir))
+
+            result = client.containers.run(
+                self.docker_img.id,
+                ['./entrypoint.sh'],
+                detach=True,
+                auto_remove=True,
+                working_dir='/github/workflow',
+                environment=self.env,
+                volumes={
+                    "/private/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},
+                    f"/private/{self.working_dir}": {"bind": "/github/workflow", "mode": "rw"}
+                }
+            )
+            try:
+                print(result.logs())
+            except Exception as e:
+                print(e)
+            result.remove(force=True)
+
+
+
+        else:
+            print(f'dose not support {self.runtime}')
 
     def load(self):
         self.dir = self.uses.split('/')[-1]
@@ -102,6 +164,7 @@ class UsesStep(BaseStep):
         branch = meta['version'] or 'master'
         print('start download git')
         self.path = os.path.join(self.working_dir, meta['name'])
+        print(self.path, 'git pull path')
         self.repo = git.Repo.clone_from(url, self.path, branch=branch)
         print(f'finish {meta["name"]} git download')
         self.meta = self.find_action_meta()
@@ -115,7 +178,7 @@ class UsesStep(BaseStep):
         if runs.get('using') == 'docker':
             img = runs.get('image')
             if img:
-                download_docker_image(img)
+                self.docker_img = download_docker_image(img)
 
     def find_action_meta(self):
         tree = self.repo.tree()
@@ -124,23 +187,25 @@ class UsesStep(BaseStep):
                 return get_yaml_file(blob.abspath)
 
 
-def get_steps(wdr, job: dict):
+def get_steps(wf, job, wdr, steps: list):
     result = []
-    for step in job.get('steps', {}):
+    for step in steps:
+        klass = RunStep
         if step.get('uses'):
-            result.append(UsesStep(wdr, step))
-        else:
-            result.append(RunStep(wdr, step))
+            klass = UsesStep
+        result.append(klass(wf, job, wdr, step))
+
     print(result)
     return result
 
 
-class Job:
-    def __init__(self, name: str, data: dict):
+class Job(SecretsMixin):
+    def __init__(self, name: str, data: dict, workflow):
         self._data = data
         self.name = name
+        self.workflow = workflow
         self.workspace = tempfile.TemporaryDirectory()
-        self.steps = get_steps(self.workspace.name, self._data)
+        self.steps = get_steps(self.workflow, self, self.workspace.name, self._data.get('steps', []))
 
     def load(self):
         for step in self.steps:
@@ -152,15 +217,16 @@ class Job:
         self.workspace.cleanup()
 
 
-def get_jobs(jobs: dict):
-    return [Job(name=name, data=data) for name, data in jobs.get('jobs', {}).items()]
+def get_jobs(wf, jobs: dict):
+    return [Job(name=name, data=data, workflow=wf) for name, data in jobs.get('jobs', {}).items()]
 
 
 class BaseWorkFlow:
-    def __init__(self, filename: str, context: dict = None):
+    def __init__(self, filename: str, context: dict = None, secrets: dict = {}):
         self.context = context or {}
         self._wf = get_yaml_file(filename)
-        self.jobs = get_jobs(self._wf)
+        self.secrets = secrets
+        self.jobs = get_jobs(self, self._wf)
 
     def start(self):
         pass

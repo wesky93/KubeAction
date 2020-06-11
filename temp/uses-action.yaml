@@ -6,21 +6,12 @@ jobs:
   notiy:
     runs-on: ubuntu-latest
     steps:
-      - name: use run!
-        uese: echo 'test'
-      - name: use uses
-        id: request
-        uses: CamiloGarciaLaRotta/watermelon-http-client@v1
-        with:
-          url: 'http://console-api.dev.pyengine.net/identity/domain/list'
-          method: post
       - uses: rtCamp/action-slack-notify@v2.0.2
         env:
           SLACK_CHANNEL: '#front-end'
           SLACK_COLOR: '#6638B6'
           SLACK_ICON: https://spaceone.console.dev.spaceone.dev/img/brand_logo.c3ef8139.png
           #           SLACK_MESSAGE: '${{ steps.request.outputs.response }}'
-          SLACK_MESSAGE: "총 ${{ fromJSON(steps.request.outputs.response).total_count }}개의 도메인이 있어요!"
-          SLACK_USERNAME: 원이가 알려드림
+          SLACK_MESSAGE: "로컬에서 돌렸어요!!!!"
+          SLACK_USERNAME: OpenAction
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-
