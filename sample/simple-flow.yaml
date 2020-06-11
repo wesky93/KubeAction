@@ -3,7 +3,7 @@ kind: flow
 metadata:
   name: simple-flow
 spec:
-  on:
+  event:
     schedule:
       - cron:  '*/15 * * * *'
   jobs:
