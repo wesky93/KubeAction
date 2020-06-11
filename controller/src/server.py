@@ -60,6 +60,7 @@ def create(body, spec, name, namespace, logger, **kwargs):
         raise kopf.PermanentError("event(on) must be set")
     if not jobs or len(jobs) < 1:
         raise kopf.PermanentError("must set more than one job")
+    kubernetes.config.load_kube_config()
 
     wf = make_workflow(name, jobs=jobs)
     api = kubernetes.client.CustomObjectsApi()
