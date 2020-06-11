@@ -1,6 +1,7 @@
 import os
 import subprocess
 from pathlib import Path
+from pprint import pprint
 
 import kopf
 import kubernetes
@@ -61,7 +62,11 @@ def make_workflow(name: str, namespace: str, jobs: list):
             ]
         }
     }
+    print('origin')
+    pprint(resource)
     kopf.adopt(resource)
+    print('\n\nafter adopt')
+    pprint(resource)
 
     data = {
         'group': "argoproj.io",
