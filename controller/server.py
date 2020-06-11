@@ -6,9 +6,10 @@ def create_fn(body, spec, name, namespace, logger, **kwargs):
     event = spec.get('on')
     jobs = spec.get('jobs')
     meta = spec.get('meta', {})
-    repo = meta.get('repo')
-    spaceone_meta = meta.get('spaceone')
-    domain_id = spaceone_meta.get('domain_id')
+    if meta:
+        repo = meta.get('repo')
+        spaceone_meta = meta.get('spaceone',{})
+        domain_id = spaceone_meta.get('domain_id')
 
     if not event:
         raise kopf.PermanentError("event(on) must be set")
