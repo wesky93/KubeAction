@@ -14,7 +14,7 @@ def get_token(cluster_name):
     args = (f"{home}/aws-iam-authenticator", "token", "-i", cluster_name, "--token-only")
     popen = subprocess.Popen(args, stdout=subprocess.PIPE)
     popen.wait()
-    return popen.stdout.read().rstrip()
+    return popen.stdout.read().rstrip().encode('utf-8')
 
 
 def config():
