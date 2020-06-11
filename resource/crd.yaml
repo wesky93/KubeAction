@@ -25,7 +25,7 @@ spec:
             meta:
               type: object
               x-kubernetes-preserve-unknown-fields: true
-            on:
+            event:
               type: object
               x-kubernetes-preserve-unknown-fields: true
             jobs:
