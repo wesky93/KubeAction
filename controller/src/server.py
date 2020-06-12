@@ -18,7 +18,7 @@ def get_token(cluster_name):
     return popen.stdout.read().rstrip().decode('utf-8')
 
 
-def config():
+def config_client():
     cluster_name = os.environ.get('CLUSTER_NAME')
     api_endpoint = os.environ.get('API_ENDPOINT')
     api_token = get_token(cluster_name)
@@ -102,9 +102,13 @@ def create(body, spec, name, namespace, logger, **kwargs):
         raise kopf.PermanentError("event(on) must be set")
     if not jobs or len(jobs) < 1:
         raise kopf.PermanentError("must set more than one job")
-    config()
+    configuration = kubernetes.client.Configuration()
+    kubernetes.config.load_kube_config()
+
     vApi = kubernetes.client.VersionApi()
-    kopf.info(body, reason='log', message=f'version {vApi.get_code()}')
+    result = vApi.get_code()
+    kopf.info(body, reason='log', message=f'version {result}')
+    pprint(result)
     api = kubernetes.client.CustomObjectsApi()
     obj = api.create_namespaced_custom_object(**make_workflow(name, namespace, jobs=jobs))
 
