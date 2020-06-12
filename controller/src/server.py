@@ -55,14 +55,14 @@ def make_workflow(name: str, namespace: str, jobs: list):
                             "value": "127.0.0.1"
                         },
                     },
-                    "sidecars": {
+                    "sidecars": [{
                         "name": "dind",
                         "image": "docker:17.10-dind",
                         "securityContext": {
                             "privileged": True,
                         },
                         "mirrorVolumeMounts": True
-                    }
+                    }]
                 }
             ]
         }
