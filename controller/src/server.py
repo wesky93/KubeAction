@@ -47,8 +47,9 @@ def make_workflow(name: str, namespace: str, jobs: list):
                     "name": "dind-sidecar-example",
                     "container": {
                         "image": "docker:17.10",
-                        "command": "[sh, -c]",
-                        "args": '["until docker ps; do sleep 3; done; docker run --rm debian:latest cat /etc/os-release"]',
+                        "command": ["sh", "-c"],
+                        "args": [
+                            "until docker ps; do sleep 3; done; docker run --rm debian:latest cat /etc/os-release"],
                         "env": {
                             "name": "DOCKER_HOST",
                             "value": "127.0.0.1"
