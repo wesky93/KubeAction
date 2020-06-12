@@ -140,7 +140,7 @@ class UsesStep(BaseStep):
 
     def exec(self):
         if self.runtime == 'docker':
-            print('run', f"{self.meta=}")
+            print('run', f"{self.meta}")
             client = docker.from_env()
             print(show_files(self.working_dir))
 
@@ -177,14 +177,14 @@ class UsesStep(BaseStep):
         self.repo = git.Repo.clone_from(url, self.path, branch=branch)
         print(f'finish {meta["name"]} git download')
         self.meta = self.find_action_meta()
-        print(f"{self.meta=}")
+        print(f"{self.meta}")
 
         # download docker image
         self._ready()
 
     def _ready(self):
         runs = self.meta.get('runs')
-        print(f"{runs=}")
+        print(f"{runs}")
         if runs.get('using') == 'docker':
             img = runs.get('image')
             if img:
@@ -197,7 +197,7 @@ class UsesStep(BaseStep):
                 return get_yaml_file(blob.abspath)
 
 
-def get_steps(job, wdr, steps: list, secrets):
+def get_steps(job, wdr, steps: list, secrets={}):
     result = []
     for step in steps:
         klass = RunStep
@@ -210,7 +210,7 @@ def get_steps(job, wdr, steps: list, secrets):
 
 
 class Job():
-    def __init__(self, name: str, data: dict, ctx: dict):
+    def __init__(self, name: str, data: dict, ctx: dict = {}):
         self._data = data
         self.name = name
         self.workspace = tempfile.TemporaryDirectory()
@@ -232,6 +232,9 @@ if __name__ == '__main__':
     # get job
     job_name = os.environ.get('KUBEACTION_NAME')
     raw = json.loads(os.environ.get('KUBEACTION_JOB', ''))
+    job = Job(job_name, raw)
+    job.load()
+    job.start()
 
     # set job
     # load resource

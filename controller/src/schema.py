@@ -53,34 +53,34 @@ class ArgoObject(CustomObject):
 
 
 class JobWorkflowTemplate(Resource):
-    def __init__(self, name: str, job: str, cmd: list = None, image: str = 'spaceone/kubeaction-job'):
+    def __init__(self, name: str, job: str, cmd: list = None, image: str = 'spaceone/kubeaction-job:0.0.6'):
         self.name = name
         self.job = job
         self.image = image
-        self.cmd = cmd or ["python /src/job.py"]
+        self.cmd = cmd or ["python3 /src/job.py"]
 
     def to_dict(self):
         return {
             "name": self.name,
             "container": {
                 "image": self.image,
-                "command": self.cmd,
+                # "command": self.cmd,
                 "env": [
                     {"name": "KUBEACTION_NAME", "value": self.name},
                     {"name": "KUBEACTION_JOB", "value": json.dumps(self.job)},
                     {"name": "DOCKER_HOST", "value": "127.0.0.1"}
                 ],
             },
-            "sidecars": [
-                {
-                    "name": "dind",
-                    "image": "docker:17.10-dind",
-                    "securityContext": {
-                        "privileged": True,
-                    },
-                    "mirrorVolumeMounts": True
-                }
-            ]
+            # "sidecars": [
+            #     {
+            #         "name": "dind",
+            #         "image": "docker:17.10-dind",
+            #         "securityContext": {
+            #             "privileged": True,
+            #         },
+            #         "mirrorVolumeMounts": True
+            #     }
+            # ]
         }
 
     @classmethod
