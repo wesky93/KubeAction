@@ -75,7 +75,7 @@ def make_workflow(name: str, namespace: str, jobs: list):
     pprint(test_resource)
 
     with open(os.path.join(BASE_DIR, 'workflow.yaml')) as f:
-        tmpl = f.read().format(name, namespace)
+        tmpl = f.read().format(name=name, namespace=namespace)
         resource = yaml.safe_load(tmpl)
     print('by load')
     pprint(resource)
