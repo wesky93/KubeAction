@@ -5,10 +5,12 @@ from pprint import pprint
 
 import kopf
 import kubernetes
+import yaml
 from dotenv import load_dotenv
 
 home = str(Path.home())
 load_dotenv(verbose=True)
+BASE_DIR = os.path.dirname(__file__)
 
 
 def get_token(cluster_name):
@@ -33,7 +35,7 @@ def config_client():
 
 
 def make_workflow(name: str, namespace: str, jobs: list):
-    resource = {
+    test_resource = {
         "apiVersion": "argoproj.io/v1alpha1",
         "kind": "Workflow",
         "metadata": {
@@ -55,30 +57,38 @@ def make_workflow(name: str, namespace: str, jobs: list):
                             "value": "127.0.0.1"
                         },
                     },
-                    "sidecars": [{
-                        "name": "dind",
-                        "image": "docker:17.10-dind",
-                        "securityContext": {
-                            "privileged": 'true',
-                        },
-                        "mirrorVolumeMounts": 'true'
-                    }]
+                    "sidecars": [
+                        {
+                            "name": "dind",
+                            "image": "docker:17.10-dind",
+                            "securityContext": {
+                                "privileged": True,
+                            },
+                            "mirrorVolumeMounts": True
+                        }
+                    ]
                 }
             ]
         }
     }
     print('origin')
-    pprint(resource)
-    kopf.adopt(resource)
+    pprint(test_resource)
+
+    # with open(os.path.join(BASE_DIR, 'workflow.yaml')) as f:
+    #     tmpl = f.read().format(name, namespace)
+    #     resource = yaml.safe_load(tmpl)
+    # print('by load')
+    # pprint(resource)
+    kopf.adopt(test_resource)
     print('\n\nafter adopt')
-    pprint(resource)
+    pprint(test_resource)
 
     data = {
         'group': "argoproj.io",
         'version': "v1alpha1",
         'namespace': namespace,
         'plural': "workflows",
-        'body': resource,
+        'body': test_resource,
     }
 
     return data
