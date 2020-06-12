@@ -1,125 +1,139 @@
 import os
-import subprocess
+import sys
 from pathlib import Path
 from pprint import pprint
 
 import kopf
-import kubernetes
 from dotenv import load_dotenv
+
+sys.path.append(os.path.dirname(__file__))
+
+from client_helper import ArgoCronWorkflowAPI, KubeActionEventAPI
+from schema import KubeActionEvent, ArgoCronWorkflow
 
 home = str(Path.home())
 load_dotenv(verbose=True)
 BASE_DIR = os.path.dirname(__file__)
 
 
-def get_token(cluster_name):
-    args = (f"{home}/aws-iam-authenticator", "token", "-i", cluster_name, "--token-only")
-    popen = subprocess.Popen(args, stdout=subprocess.PIPE)
-    popen.wait()
-    return popen.stdout.read().rstrip().decode('utf-8')
+# def get_crd_create_api(group, version, namespace, plural):
+#     kubernetes.config.load_kube_config()
+#     api = kubernetes.client.CustomObjectsApi()
+#     return partial(api.create_namespaced_custom_object, **{
+#         "group": group,
+#         "version": version,
+#         "namespace": namespace,
+#         "plural": plural
+#     })
+#
+#
+# def get_argo_create_api(namespace, plural, version="v1alpha1"):
+#     return partial(get_crd_create_api, **{
+#         "group": "argoproj.io",
+#         "version": version,
+#         "namespace": namespace,
+#         "plural": plural
+#     })
+#
+#
+# def get_kubeaction_create_api(namespace, plural, version="v1alpha1"):
+#     return partial(get_crd_create_api, **{
+#         "group": "kubeaction.spaceone.dev",
+#         "version": version,
+#         "namespace": namespace,
+#         "plural": plural
+#     })
+#
+#
+# def get_event_create_api(namespace):
+#     return get_kubeaction_create_api(namespace=namespace, plural='events')
+#
+#
+# def get_task_create_api(namespace):
+#     return get_kubeaction_create_api(namespace=namespace, plural='tasks')
 
 
-def config_client():
-    cluster_name = os.environ.get('CLUSTER_NAME')
-    api_endpoint = os.environ.get('API_ENDPOINT')
-    api_token = get_token(cluster_name)
-    configuration = kubernetes.client.Configuration()
-    configuration.host = api_endpoint
-    configuration.verify_ssl = False
-    configuration.debug = True
-    configuration.api_key['authorization'] = f"Bearer {api_token}"
-    configuration.assert_hostname = True
-    configuration.verify_ssl = False
-    kubernetes.client.Configuration.set_default(configuration)
+# def make_workflow(name: str, namespace: str, jobs: list, adopt=True):
+#     resource = {
+#         "apiVersion": "argoproj.io/v1alpha1",
+#         "kind": "Workflow",
+#         "metadata": {
+#             "name": name,
+#             "namespace": namespace,
+#         },
+#         "spec": {
+#             "entrypoint": "dind-sidecar-test",
+#             "templates": [
+#                 {
+#                     "name": "dind-sidecar-test",
+#                     "container": {
+#                         "image": "docker:17.10",
+#                         "command": ["sh", "-c"],
+#                         "args": [
+#                             "until docker ps; do sleep 3; done; docker run --rm debian:latest cat /etc/os-release"],
+#                         "env": [{
+#                             "name": "DOCKER_HOST",
+#                             "value": "127.0.0.1"
+#                         }],
+#                     },
+#                     "sidecars": [
+#                         {
+#                             "name": "dind",
+#                             "image": "docker:17.10-dind",
+#                             "securityContext": {
+#                                 "privileged": True,
+#                             },
+#                             "mirrorVolumeMounts": True
+#                         }
+#                     ]
+#                 }
+#             ]
+#         }
+#     }
+#     print('origin')
+#     pprint(resource)
+#
+#     if adopt:
+#         kopf.adopt(resource)
+#     print('\n\nafter adopt')
+#     pprint(resource)
+#     return resource
 
 
-def make_workflow(name: str, namespace: str, jobs: list):
-    resource = {
-        "apiVersion": "argoproj.io/v1alpha1",
-        "kind": "Workflow",
-        "metadata": {
-            "name": name,
-            "namespace": namespace,
-        },
-        "spec": {
-            "entrypoint": "dind-sidecar-test",
-            "templates": [
-                {
-                    "name": "dind-sidecar-test",
-                    "container": {
-                        "image": "docker:17.10",
-                        "command": ["sh", "-c"],
-                        "args": [
-                            "until docker ps; do sleep 3; done; docker run --rm debian:latest cat /etc/os-release"],
-                        "env": [{
-                            "name": "DOCKER_HOST",
-                            "value": "127.0.0.1"
-                        }],
-                    },
-                    "sidecars": [
-                        {
-                            "name": "dind",
-                            "image": "docker:17.10-dind",
-                            "securityContext": {
-                                "privileged": True,
-                            },
-                            "mirrorVolumeMounts": True
-                        }
-                    ]
-                }
-            ]
-        }
-    }
-    print('origin')
-    pprint(resource)
-
-    kopf.adopt(resource)
-    print('\n\nafter adopt')
-    pprint(resource)
-
-    data = {
-        'group': "argoproj.io",
-        'version': "v1alpha1",
-        'namespace': namespace,
-        'plural': "workflows",
-        'body': resource,
-    }
-
-    return data
-
-
-@kopf.on.create('kubeaction.spaceone.dev', 'v1', 'flows')
-def create(body, spec, name, namespace, logger, **kwargs):
-    print('body')
-    print(body)
-    print('spec')
-    print(spec)
-    print('name')
-    print(name)
-    print('namepace')
-    print(namespace)
-
-    event = spec.get('event')
+@kopf.on.create('kubeaction.spaceone.dev', 'v1alpha1', 'flows')
+def create_flows(body, spec, name, namespace, logger, **kwargs):
+    events = spec.get('events')
     jobs = spec.get('jobs')
-    meta = spec.get('meta', {})
-    if meta:
-        repo = meta.get('repo')
-        spaceone_meta = meta.get('spaceone', {})
-        domain_id = spaceone_meta.get('domain_id')
 
-    if not event:
+    if not events:
         raise kopf.PermanentError("event(on) must be set")
     if not jobs or len(jobs) < 1:
         raise kopf.PermanentError("must set more than one job")
-    kubernetes.config.load_kube_config()
-    configuration = kubernetes.client.Configuration()
-    api_instance = kubernetes.client.ApiClient(configuration)
 
-    vApi = kubernetes.client.VersionApi(api_instance)
-    result = vApi.get_code()
-    kopf.info(body, reason='log', message=f'version {result}')
-    pprint(result)
-    api = kubernetes.client.CustomObjectsApi(api_instance)
-    obj = api.create_namespaced_custom_object(**make_workflow(name, namespace, jobs=jobs))
-    pprint(obj)
-    kopf.info(body, reason='Create', message=f'Create Workflow {obj.get("metadata", {}).get("name")}')
+    api = KubeActionEventAPI(namespace)
+    for k, v in events.items():
+        body = KubeActionEvent(namespace, name, event_type=k, event_data=v, jobs=jobs).to_dict()
+        pprint(body)
+        obj = api.create(body=body)
+        pprint(obj)
+        logger.info('create event', obj)
+
+
+@kopf.on.create('kubeaction.spaceone.dev', 'v1alpha1', 'events')
+def create_events(body, spec, name, namespace, logger, **kwargs):
+    pprint(body)
+    event_type = spec.get('type')
+    jobs = spec.get('jobs')
+
+    if event_type == 'schedule':
+        data = spec.get('data', [])
+        for s in data:
+            cron = s.get('cron')
+            if cron:
+                wf = ArgoCronWorkflow.from_flow(namespace, name, cron, jobs)
+                ArgoCronWorkflowAPI(namespace).create(body=wf.to_dict())
+
+
+@kopf.on.create('kubeaction.spaceone.dev', 'v1alpha1', 'tasks')
+def create(body, spec, name, namespace, logger, **kwargs):
+    pass

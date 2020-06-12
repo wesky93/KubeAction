@@ -1,11 +1,11 @@
-apiVersion: kubeaction.spaceone.dev/v1
-kind: flow
+apiVersion: kubeaction.spaceone.dev/v1alpha1
+kind: Flow
 metadata:
   name: simple-flow
 spec:
-  event:
+  events:
     schedule:
-      - cron:  '*/15 * * * *'
+      - cron:  '*/1 * * * *'
   jobs:
     notiy:
       runs-on: ubuntu-latest
