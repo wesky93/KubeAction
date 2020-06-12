@@ -74,21 +74,21 @@ def make_workflow(name: str, namespace: str, jobs: list):
     print('origin')
     pprint(test_resource)
 
-    # with open(os.path.join(BASE_DIR, 'workflow.yaml')) as f:
-    #     tmpl = f.read().format(name, namespace)
-    #     resource = yaml.safe_load(tmpl)
-    # print('by load')
-    # pprint(resource)
-    kopf.adopt(test_resource)
+    with open(os.path.join(BASE_DIR, 'workflow.yaml')) as f:
+        tmpl = f.read().format(name, namespace)
+        resource = yaml.safe_load(tmpl)
+    print('by load')
+    pprint(resource)
+    kopf.adopt(resource)
     print('\n\nafter adopt')
-    pprint(test_resource)
+    pprint(resource)
 
     data = {
         'group': "argoproj.io",
         'version': "v1alpha1",
         'namespace': namespace,
         'plural': "workflows",
-        'body': test_resource,
+        'body': resource,
     }
 
     return data
