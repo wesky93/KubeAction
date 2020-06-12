@@ -36,27 +36,19 @@ def make_workflow(name: str, namespace: str, jobs: list):
     resource = {
         "apiVersion": "argoproj.io/v1alpha1",
         "kind": "Workflow",
-        "metadata": {"generateName": f"{name}-"},
+        "metadata": {
+            "name": name,
+            "namespace": namespace,
+        },
         "spec": {
             "entrypoint": "whalesay",
-            "arguments": {
-                "parameters": [
-                    {
-                        "name": "message",
-                        "value": "hello world"
-                    }
-                ]
-            },
             "templates": [
                 {
                     "name": "whalesay",
-                    "inputs": {
-                        "parameters": [{"name": "message", }]
-                    },
                     "container": {
                         "image": "docker/whalesay",
                         "command": "[cowsay]",
-                        "args": '["{{inputs.parameters.message}}"]'
+                        "args": '["hello world"]'
                     }
                 }
             ]
@@ -112,5 +104,5 @@ def create(body, spec, name, namespace, logger, **kwargs):
     pprint(result)
     api = kubernetes.client.CustomObjectsApi(api_instance)
     obj = api.create_namespaced_custom_object(**make_workflow(name, namespace, jobs=jobs))
-
+    pprint(obj)
     kopf.info(body, reason='Create', message=f'Create Workflow {obj.metadata.name}')
