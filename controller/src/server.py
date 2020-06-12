@@ -41,10 +41,10 @@ def make_workflow(name: str, namespace: str, jobs: list):
             "namespace": namespace,
         },
         "spec": {
-            "entrypoint": "dind-sidecar-example",
+            "entrypoint": "dind-sidecar-test",
             "templates": [
                 {
-                    "name": "dind-sidecar-example",
+                    "name": "dind-sidecar-test",
                     "container": {
                         "image": "docker:17.10",
                         "command": ["sh", "-c"],
@@ -59,9 +59,9 @@ def make_workflow(name: str, namespace: str, jobs: list):
                         "name": "dind",
                         "image": "docker:17.10-dind",
                         "securityContext": {
-                            "privileged": True,
+                            "privileged": 'true',
                         },
-                        "mirrorVolumeMounts": True
+                        "mirrorVolumeMounts": 'true'
                     }]
                 }
             ]
