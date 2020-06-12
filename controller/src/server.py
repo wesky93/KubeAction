@@ -41,14 +41,26 @@ def make_workflow(name: str, namespace: str, jobs: list):
             "namespace": namespace,
         },
         "spec": {
-            "entrypoint": "whalesay",
+            "entrypoint": "dind-sidecar-example",
             "templates": [
                 {
-                    "name": "whalesay",
+                    "name": "dind-sidecar-example",
                     "container": {
-                        "image": "docker/whalesay",
-                        "command": "[cowsay]",
-                        "args": '["hello world"]'
+                        "image": "docker:17.10",
+                        "command": "[sh, -c]",
+                        "args": '["until docker ps; do sleep 3; done; docker run --rm debian:latest cat /etc/os-release"]',
+                        "env": {
+                            "name": "DOCKER_HOST",
+                            "value": "127.0.0.1"
+                        },
+                    },
+                    "sidecars": {
+                        "name": "dind",
+                        "image": "docker:17.10-dind",
+                        "securityContext": {
+                            "privileged": True,
+                        },
+                        "mirrorVolumeMounts": True
                     }
                 }
             ]
