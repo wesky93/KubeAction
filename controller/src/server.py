@@ -5,7 +5,6 @@ from pprint import pprint
 
 import kopf
 import kubernetes
-import yaml
 from dotenv import load_dotenv
 
 home = str(Path.home())
@@ -35,7 +34,7 @@ def config_client():
 
 
 def make_workflow(name: str, namespace: str, jobs: list):
-    test_resource = {
+    resource = {
         "apiVersion": "argoproj.io/v1alpha1",
         "kind": "Workflow",
         "metadata": {
@@ -52,10 +51,10 @@ def make_workflow(name: str, namespace: str, jobs: list):
                         "command": ["sh", "-c"],
                         "args": [
                             "until docker ps; do sleep 3; done; docker run --rm debian:latest cat /etc/os-release"],
-                        "env": {
+                        "env": [{
                             "name": "DOCKER_HOST",
                             "value": "127.0.0.1"
-                        },
+                        }],
                     },
                     "sidecars": [
                         {
@@ -72,13 +71,8 @@ def make_workflow(name: str, namespace: str, jobs: list):
         }
     }
     print('origin')
-    pprint(test_resource)
-
-    with open(os.path.join(BASE_DIR, 'workflow.yaml')) as f:
-        tmpl = f.read().format(name=name, namespace=namespace)
-        resource = yaml.safe_load(tmpl)
-    print('by load')
     pprint(resource)
+
     kopf.adopt(resource)
     print('\n\nafter adopt')
     pprint(resource)
