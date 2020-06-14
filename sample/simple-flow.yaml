@@ -18,5 +18,9 @@ spec:
           run: |
             echo 'second' |
             pip3 list
+        - name: run node
+          id: node
+          run: |
+            node --version
 
 

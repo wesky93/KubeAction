@@ -52,8 +52,21 @@ class ArgoObject(CustomObject):
     apiVersion = "argoproj.io/v1alpha1"
 
 
+class StepsWorkflowTemplates(Resource):
+    def __init__(self, template_names: List[str], name="jobs"):
+        self.name = name
+        self.template_names = template_names
+
+    def to_dict(self):
+        steps = [[{"name": name, "template": name} for name in self.template_names]]
+        return {
+            "name": self.name,
+            "steps": steps
+        }
+
+
 class JobWorkflowTemplate(Resource):
-    def __init__(self, name: str, job: str, cmd: list = None, image: str = 'spaceone/kubeaction-job:0.0.6'):
+    def __init__(self, name: str, job: str, cmd: list = None, image: str = 'spaceone/kubeaction-job:0.0.7'):
         self.name = name
         self.job = job
         self.image = image
@@ -94,8 +107,8 @@ class JobWorkflowTemplate(Resource):
         else:
             for name, job in jobs.items():
                 templates.append(cls(name, job))
-                if entrypoint is None:
-                    entrypoint = name
+            templates.append(StepsWorkflowTemplates(jobs.keys()))
+            entrypoint = "jobs"
 
         return {
             'entrypoint': entrypoint,
