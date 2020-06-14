@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import tempfile
 from urllib.parse import urlparse
 
@@ -138,12 +139,16 @@ class UsesStep(BaseStep):
     def runtime(self):
         return self.meta.get('runs', {}).get('using')
 
+    @property
+    def main(self):
+        return self.meta.get('runs', {}).get('main')
+
     def exec(self):
+        print(show_files(self.working_dir))
+
         if self.runtime == 'docker':
             print('run', f"{self.meta}")
             client = docker.from_env()
-            print(show_files(self.working_dir))
-
             result = client.containers.run(
                 self.docker_img.id,
                 ['./entrypoint.sh'],
@@ -152,8 +157,8 @@ class UsesStep(BaseStep):
                 working_dir='/github/workflow',
                 environment=self.env,
                 volumes={
-                    "/private/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},
-                    f"/private/{self.working_dir}": {"bind": "/github/workflow", "mode": "rw"}
+                    "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},
+                    f"/{self.working_dir}": {"bind": "/github/workflow", "mode": "rw"}
                 }
             )
             try:
@@ -161,6 +166,10 @@ class UsesStep(BaseStep):
             except Exception as e:
                 print(e)
             result.remove(force=True)
+        elif self.runtime == 'node12':
+            print(show_files(self.path))
+            out = subprocess.check_output(f'node {self.main}', shell=True, encoding='utf-8', cwd=self.path)
+            print(out)
         else:
             print(f'dose not support {self.runtime}')
 
