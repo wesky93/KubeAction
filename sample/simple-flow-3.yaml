@@ -1,13 +1,13 @@
 apiVersion: kubeaction.spaceone.dev/v1alpha1
 kind: Flow
 metadata:
-  name: simple-flow
+  name: simple-flow-3
 spec:
   events:
     schedule:
       - cron:  '*/1 * * * *'
   jobs:
-    notiy:
+    first:
       runs-on: ubuntu-latest
       steps:
         - name: let's Run!
@@ -18,9 +18,6 @@ spec:
           run: |
             echo 'second' |
             pip3 list
-        - name: run node
-          id: node
-          run: |
-            node --version
-
-
+        - uses: actions/javascript-action@v1
+          with:
+            milliseconds: 3000
