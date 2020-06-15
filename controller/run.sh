@@ -1,0 +1,1 @@
+kopf run ./src/server.py --verbose
