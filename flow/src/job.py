@@ -2,6 +2,8 @@ import json
 import os
 import subprocess
 import tempfile
+from dataclasses import dataclass
+from pprint import pprint
 from typing import ItemsView
 from urllib.parse import urlparse
 
@@ -17,9 +19,12 @@ def get_yaml_file(filename):
     return data
 
 
-def template_render(_template: str, context: dict):
+def template_render(_template: str, ctx: dict, secrets=None):
     raw = _template.replace('${{', '{{')
     temp = Template(raw)
+    context = ctx
+    if secrets:
+        pass
     return temp.render(**context)
 
 
@@ -35,11 +40,12 @@ def get_repo_name_version(p: str):
 
 
 class BaseStep:
-    def __init__(self, job, working_dir: str, data: dict, secrets):
+    def __init__(self, job, working_dir: str, data: dict, secrets={}, ctx={}):
         self._data = data
         self.job = job
         self.working_dir = working_dir
         self.secrets = secrets
+        self.ctx = ctx
         self._env = None
 
     def id(self):
@@ -62,11 +68,19 @@ class BaseStep:
     def clean(self):
         pass
 
+    def render_value(self, value):
+        if type(value) == str and "{{" in value:
+            return template_render(value, ctx=self.ctx, secrets=self.secrets)
+        elif type(value) == bool:
+            return 'true' if value else 'false'
+        else:
+            return value
+
     @property
     def env(self):
         if not self._env:
             self._env = {
-                k: template_render(v, {"secrets": self.secrets})
+                k: self.render_value(v)
                 for k, v in self._data.get('env', {}).items()
             }
         return self._env
@@ -79,10 +93,23 @@ class RunStep(BaseStep):
         return self._data.get('run', '')
 
     def exec(self):
-        cmds = self.run.split('|')
-        for cmd in cmds:
-            cmd = cmd.replace('\n', '')
-            os.system(cmd)
+        print(self.run)
+        sh = tempfile.NamedTemporaryFile()
+
+        with open(sh.name, 'w') as f:
+            f.write(self.run)
+
+        try:
+            out = subprocess.check_output(f'/bin/bash -e {sh.name}',
+                                          shell=True,
+                                          encoding='utf-8',
+                                          stderr=subprocess.STDOUT,
+                                          cwd=self.working_dir)
+        except subprocess.CalledProcessError as exc:
+            print(exc.output)
+            raise exc
+        print(out)
+        sh.close()
 
     def setup(self):
         pass
@@ -122,8 +149,8 @@ def show_files(p):
 
 
 class UsesStep(BaseStep):
-    def __init__(self, job, working_dir: str, data: dict, secrets):
-        super().__init__(job, working_dir, data, secrets)
+    def __init__(self, job, working_dir: str, data: dict, secrets={}, ctx={}):
+        super().__init__(job, working_dir, data, secrets=secrets, ctx=ctx)
         self.dir = None
         self.repo = None
         self.meta = None
@@ -163,9 +190,10 @@ class UsesStep(BaseStep):
 
     def get_inputs_env(self) -> dict:
         env = {key: data['default'] for key, data in self.inputs_by_items if data.get('default')}
+
         for k, v in self.with_by_items:
             env[k] = v
-        return {f"INPUT_{k.upper()}": v for k, v in env.items()}
+        return {f"INPUT_{k.upper().replace('-', '_')}": self.render_value(v) for k, v in env.items()}
 
     def exec(self):
         print(show_files(self.working_dir))
@@ -195,7 +223,15 @@ class UsesStep(BaseStep):
             inputs = self.get_inputs_env().items()
             exports = "; ".join([f"export {k}={v}" for k, v in inputs]) + "; " if inputs else ""
             entrypoint = os.path.join(self.path, self.main)
-            out = subprocess.check_output(f'{exports}node {entrypoint}', shell=True, encoding='utf-8', cwd=self.working_dir)
+            try:
+                out = subprocess.check_output(f'{exports}node {entrypoint}',
+                                              shell=True,
+                                              encoding='utf-8',
+                                              stderr=subprocess.STDOUT,
+                                              cwd=self.working_dir)
+            except subprocess.CalledProcessError as exc:
+                print(exc.output)
+                raise exc
             print(out)
         else:
             print(f'dose not support {self.runtime}')
@@ -233,24 +269,30 @@ class UsesStep(BaseStep):
                 return get_yaml_file(blob.abspath)
 
 
-def get_steps(job, wdr, steps: list, secrets={}):
+def get_steps(job, wdr, steps: list, secrets={}, ctx={}):
     result = []
     for step in steps:
         klass = RunStep
         if step.get('uses'):
             klass = UsesStep
-        result.append(klass(job, wdr, step, secrets))
+        result.append(klass(job, wdr, step, secrets, ctx))
 
     print(result)
     return result
 
 
 class Job():
-    def __init__(self, name: str, data: dict, ctx: dict = {}):
+    def __init__(self,
+                 name: str,
+                 data: dict,
+                 workspace: tempfile.TemporaryDirectory = None,
+                 secrets={},
+                 ctx: dict = {}
+                 ):
         self._data = data
         self.name = name
-        self.workspace = tempfile.TemporaryDirectory()
-        self.steps = get_steps(self, self.workspace.name, self._data.get('steps', []))
+        self.workspace = workspace or tempfile.TemporaryDirectory()
+        self.steps = get_steps(self, self.workspace.name, self._data.get('steps', []), secrets, ctx)
 
     def load(self):
         for step in self.steps:
@@ -262,13 +304,66 @@ class Job():
         self.workspace.cleanup()
 
 
+@dataclass
+class KubeActionENV:
+    @property
+    def flow_name(self):
+        return os.environ.get('KUBEACTION_FLOW')
+
+    @property
+    def job_name(self):
+        return os.environ.get('KUBEACTION_NAME')
+
+    @property
+    def job(self):
+        return json.loads(os.environ.get('KUBEACTION_JOB', ''))
+
+    @property
+    def repository(self):
+        return os.environ.get('KUBEACTION_REPOSITORY')
+
+    @property
+    def github_token(self):
+        return os.environ.get('KUBEACTION_GITHUB_TOKEN', '')
+
+
+def set_github_env(ctx: dict):
+    data = {
+        "GITHUB_REPOSITORY": ctx['repository'],
+        "GITHUB_WORKSPACE": ctx['workspace'],
+        "GITHUB_TOKEN": ctx['token']
+
+    }
+    for k, v in data.items():
+        os.environ[k] = v
+
+
+def get_github_context(env: KubeActionENV, workspace: str):
+    ctx = {
+        "workspace": workspace,
+        "job": env.job_name,
+        "repository": '',
+        "repository_owner": '',
+        "token": env.github_token,
+    }
+    if env.repository:
+        repo = urlparse(env.repository).path
+        if repo[0] == '/':
+            repo = repo[1:]
+        ctx['repository'] = repo
+        ctx['repository_owner'] = repo.split('/')[0]
+    set_github_env(ctx)
+    return ctx
+
+
 if __name__ == '__main__':
     # get secrets
-
-    # get job
-    job_name = os.environ.get('KUBEACTION_NAME')
-    raw = json.loads(os.environ.get('KUBEACTION_JOB', ''))
-    job = Job(job_name, raw)
+    workspace = tempfile.TemporaryDirectory()
+    kube_env = KubeActionENV()
+    context = {
+        "github": get_github_context(kube_env, workspace.name)
+    }
+    job = Job(kube_env.job_name, kube_env.job, workspace, ctx=context)
     job.load()
     job.start()
 

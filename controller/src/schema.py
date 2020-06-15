@@ -1,8 +1,13 @@
 import json
+import os
+from dataclasses import dataclass
 from typing import List
 
 import kopf
 import shortuuid
+from dotenv import load_dotenv
+
+load_dotenv(verbose=True)
 
 
 def get_uuid():
@@ -12,6 +17,13 @@ def get_uuid():
 class Resource:
     def to_dict(self):
         raise NotImplementedError('you must overwrite to_dict')
+
+
+@dataclass
+class FlowInfo:
+    name: str
+    repo: str
+    github_token: dict
 
 
 class CustomObject(Resource):
@@ -66,23 +78,48 @@ class StepsWorkflowTemplates(Resource):
 
 
 class JobWorkflowTemplate(Resource):
-    def __init__(self, name: str, job: str, cmd: list = None, image: str = 'spaceone/kubeaction-job:0.0.11'):
+    def __init__(self, name: str, job: str, flow_info: FlowInfo, cmd: list = None,
+                 image: str = None,
+                 ):
         self.name = name
         self.job = job
-        self.image = image
+        self.image = image or os.environ.get('KUBEACTION_JOB_IMAGE')
         self.cmd = cmd or ["python3 /src/job.py"]
+        self.flow_info = flow_info
+
+    def get_github_token(self):
+        if self.flow_info.github_token:
+            if self.flow_info.github_token['secrets_provider'] == 'kubernetes':
+                return {
+                    "name": "KUBEACTION_GITHUB_TOKEN",
+                    "valueFrom": {
+                        "secretKeyRef": {
+                            "name": self.flow_info.github_token.get('name'),
+                            "key": self.flow_info.github_token.get('key'),
+                        }
+                    }
+                }
+        return None
 
     def to_dict(self):
+        env = [
+            {"name": "KUBEACTION_NAME", "value": self.name},
+            {"name": "KUBEACTION_JOB", "value": json.dumps(self.job)},
+            {"name": "KUBEACTION_FLOW", "value": self.flow_info.name},
+            {"name": "KUBEACTION_REPOSITORY", "value": self.flow_info.repo},
+            {"name": "DOCKER_HOST", "value": "127.0.0.1"},
+
+        ]
+        github_token = self.get_github_token()
+        if github_token:
+            env.append(github_token)
+
         return {
             "name": self.name,
             "container": {
                 "image": self.image,
                 # "command": self.cmd,
-                "env": [
-                    {"name": "KUBEACTION_NAME", "value": self.name},
-                    {"name": "KUBEACTION_JOB", "value": json.dumps(self.job)},
-                    {"name": "DOCKER_HOST", "value": "127.0.0.1"}
-                ],
+                "env": env
             },
             # "sidecars": [
             #     {
@@ -97,7 +134,7 @@ class JobWorkflowTemplate(Resource):
         }
 
     @classmethod
-    def from_flow_jobs(cls, jobs: dict) -> dict:
+    def from_flow_jobs(cls, jobs: dict, flow_info: FlowInfo) -> dict:
         has_needs = any([j.get('needs') for j in jobs.values()])
         templates = []
         entrypoint: str = None
@@ -106,7 +143,7 @@ class JobWorkflowTemplate(Resource):
             pass
         else:
             for name, job in jobs.items():
-                templates.append(cls(name, job))
+                templates.append(cls(name, job, flow_info=flow_info))
             templates.append(StepsWorkflowTemplates(jobs.keys()))
             entrypoint = "jobs"
 
@@ -132,8 +169,8 @@ class ArgoWorkflow(ArgoObject):
         }
 
     @classmethod
-    def from_flow(cls, namespace: str, name: str, jobs: dict, **kwargs):
-        return cls(namespace, name, **JobWorkflowTemplate.from_flow_jobs(jobs=jobs), **kwargs)
+    def from_flow(cls, namespace: str, name: str, jobs: dict, flow_info: FlowInfo, **kwargs):
+        return cls(namespace, name, **JobWorkflowTemplate.from_flow_jobs(jobs=jobs, flow_info=flow_info), **kwargs)
 
 
 class ArgoCronWorkflow(ArgoObject):
@@ -164,8 +201,9 @@ class ArgoCronWorkflow(ArgoObject):
         }
 
     @classmethod
-    def from_flow(cls, namespace: str, name: str, schedule: str, jobs: dict, **kwargs):
-        return cls(namespace, name, schedule, **JobWorkflowTemplate.from_flow_jobs(jobs=jobs), **kwargs)
+    def from_flow(cls, namespace: str, name: str, schedule: str, jobs: dict, flow_info, **kwargs):
+        return cls(namespace, name, schedule, **JobWorkflowTemplate.from_flow_jobs(jobs=jobs, flow_info=flow_info),
+                   **kwargs)
 
 
 class KubeActionObject(CustomObject):
@@ -175,11 +213,12 @@ class KubeActionObject(CustomObject):
 class KubeActionEvent(KubeActionObject):
     kind = 'Event'
 
-    def __init__(self, namespace: str, name, event_type='', event_data=None, jobs: list = None):
+    def __init__(self, namespace: str, name, event_type='', event_data=None, jobs: list = None, metadata: dict = {}):
         super(KubeActionEvent, self).__init__(namespace)
         self.name = name
         self.event_type = event_type
         self.event_data = event_data
+        self.metadata = metadata
         self.jobs = jobs or []
 
     def get_obj_name(self):
@@ -189,5 +228,6 @@ class KubeActionEvent(KubeActionObject):
         return {
             "type": self.event_type,
             "data": self.event_data,
-            "jobs": self.jobs
+            "jobs": self.jobs,
+            "metadata": self.metadata,
         }
