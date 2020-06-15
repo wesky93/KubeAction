@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: aws-sqs-kubeaction
+  namespace: argo-events
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  subscription:
+    http:
+      port: 9300
+  dependencies:
+    - name: kubeaction
+      gatewayName: aws-sqs-kubeaction
+      eventName: kubeaction
+  triggers:
+    - template:
+        name: http-trigger
+        http:
+          url: https://hooks.slack.com/services/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
+          payload:
+            - src:
+                dependencyName: kubeaction
+                dataKey: body
+              dest: spec.arguments
+            - src:
+                dependencyName: kubeaction
+                dataKey: body
+              dest: text
+          method: POST
