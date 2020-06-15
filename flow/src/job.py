@@ -3,6 +3,7 @@ import os
 import subprocess
 import tempfile
 from dataclasses import dataclass
+from pprint import pprint
 from typing import ItemsView
 from urllib.parse import urlparse
 
@@ -92,10 +93,23 @@ class RunStep(BaseStep):
         return self._data.get('run', '')
 
     def exec(self):
-        cmds = self.run.split('|')
-        for cmd in cmds:
-            cmd = cmd.replace('\n', '')
-            os.system(cmd)
+        print(self.run)
+        sh = tempfile.NamedTemporaryFile()
+
+        with open(sh.name, 'w') as f:
+            f.write(self.run)
+
+        try:
+            out = subprocess.check_output(f'/bin/bash -e {sh.name}',
+                                          shell=True,
+                                          encoding='utf-8',
+                                          stderr=subprocess.STDOUT,
+                                          cwd=self.working_dir)
+        except subprocess.CalledProcessError as exc:
+            print(exc.output)
+            raise exc
+        print(out)
+        sh.close()
 
     def setup(self):
         pass

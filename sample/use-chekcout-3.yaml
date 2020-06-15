@@ -20,6 +20,11 @@ spec:
         - name: showTest
           id: request
           run: echo 'test'
+        - name: showTest
+          id: request2
+          run: |
+            echo 'test'
+            echo 'test2'
         - uses: actions/checkout@v2
         - name: print
           run: ls -al

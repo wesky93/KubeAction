@@ -91,7 +91,7 @@ class JobWorkflowTemplate(Resource):
         if self.flow_info.github_token:
             if self.flow_info.github_token['secrets_provider'] == 'kubernetes':
                 return {
-                    "name": "KUBEACTION_GITHUBTOKEN",
+                    "name": "KUBEACTION_GITHUB_TOKEN",
                     "valueFrom": {
                         "secretKeyRef": {
                             "name": self.flow_info.github_token.get('name'),
