@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   namespace: kubeaction
-  name: kubeaction
+  name: kubeaction-argo-events
 rules:
 - apiGroups: ["*"] # "" indicates the core API group
   resources: ["*"]
@@ -14,12 +14,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   namespace: kubeaction
-  name: kubeaction
+  name: kubeaction-argo-events
 roleRef:
   # role과 rolebinding은 같은 namespace
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: kubeaction
+  name: kubeaction-argo-events
 subjects:
   # serviceAccount는 다른 namespace에 있어도 됨.
   # 다른 namespace의 service account에게 현재 namespace에 대한 권한을 묶어줄 수도 있음.

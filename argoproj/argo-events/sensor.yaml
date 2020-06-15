@@ -15,16 +15,17 @@ spec:
       eventName: kubeaction
   triggers:
     - template:
+        # ref : https://github.com/argoproj/argo-events/blob/master/api/sensor.md#httptrigger
         name: http-trigger
         http:
-          url: https://hooks.slack.com/services/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
-          payload:
-            - src:
-                dependencyName: kubeaction
-                dataKey: body
-              dest: spec.arguments
-            - src:
-                dependencyName: kubeaction
-                dataKey: body
-              dest: text
-          method: POST
+          url: http://a22b2eae0a6d511eaa1e3023afc37c3c-1381281042.ap-northeast-2.elb.amazonaws.com
+#          payload:
+#            - src:
+#                dependencyName: kubeaction
+#                dataKey: body
+#              dest: spec.arguments
+#            - src:
+#                dependencyName: kubeaction
+#                dataKey: body
+#              dest: text
+          method: GET
