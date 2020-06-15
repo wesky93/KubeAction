@@ -2,8 +2,10 @@
 
 Github Action on K*S!!
 
+this project is part of OpenAction Project.
+we will support you can use this in local, all any system.
 
-## support syntax
+## support workflow syntax
 
 - [x] name -> metadata.name
 - [x] on -> spec.events
@@ -34,7 +36,7 @@ Github Action on K*S!!
         - [ ] container
         - [ ] services
         - [x] steps
-            - [x] run 
+            - [x] run
             - [ ] shell
                 - [ ] (bash)
                 - [ ] (pwsh)
@@ -59,3 +61,34 @@ Github Action on K*S!!
         - [ ] vault
 - [ ] matrix
 - [ ] needs
+
+## support action syntax
+
+- [x] name
+- [x] author
+- [x] description
+- [] inputs
+    - [] input_id
+    - [] description
+    - [] required
+    - [] default
+- [] outputs
+- [] runs for JavaScript actions
+    - [x] using(node12)
+    - [] pre
+    - [] pre-if
+    - [x] main
+    - [] post
+    - [] post-if
+- [] runs for Docker actions
+    - [x] using(docker)
+    - [] image
+        - [] Dockerfile
+        - [x] DockerHub url
+    - [] pre-entrypoint
+    - [x] entrypoint 
+    - [] env
+    - [] args(only for Dockerfile)
+- [] branding
+    - [] color
+    - [] icon

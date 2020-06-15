@@ -66,7 +66,7 @@ class StepsWorkflowTemplates(Resource):
 
 
 class JobWorkflowTemplate(Resource):
-    def __init__(self, name: str, job: str, cmd: list = None, image: str = 'spaceone/kubeaction-job:0.0.9'):
+    def __init__(self, name: str, job: str, cmd: list = None, image: str = 'spaceone/kubeaction-job:0.0.11'):
         self.name = name
         self.job = job
         self.image = image

@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import tempfile
+from typing import ItemsView
 from urllib.parse import urlparse
 
 import docker
@@ -128,6 +129,7 @@ class UsesStep(BaseStep):
         self.meta = None
         self.docker_img = None
 
+    @property
     def id(self):
         return self._data.get('id')
 
@@ -136,12 +138,34 @@ class UsesStep(BaseStep):
         return self._data.get('uses')
 
     @property
+    def with_by_items(self) -> ItemsView:
+        return self._data.get('with', {}).items()
+
+    @property
+    def runs(self):
+        return self.meta.get('runs', {})
+
+    @property
     def runtime(self):
-        return self.meta.get('runs', {}).get('using')
+        return self.runs.get('using')
 
     @property
     def main(self):
-        return self.meta.get('runs', {}).get('main')
+        return self.runs.get('main')
+
+    @property
+    def pre(self):
+        return self.runs.get('pre')
+
+    @property
+    def inputs_by_items(self) -> ItemsView:
+        return self.meta.get('inputs', {}).items()
+
+    def get_inputs_env(self) -> dict:
+        env = {key: data['default'] for key, data in self.inputs_by_items if data.get('default')}
+        for k, v in self.with_by_items:
+            env[k] = v
+        return {f"INPUT_{k.upper()}": v for k, v in env.items()}
 
     def exec(self):
         print(show_files(self.working_dir))
@@ -168,7 +192,10 @@ class UsesStep(BaseStep):
             result.remove(force=True)
         elif self.runtime == 'node12':
             print(show_files(self.path))
-            out = subprocess.check_output(f'node {self.main}', shell=True, encoding='utf-8', cwd=self.path)
+            inputs = self.get_inputs_env().items()
+            exports = "; ".join([f"export {k}={v}" for k, v in inputs]) + "; " if inputs else ""
+            entrypoint = os.path.join(self.path, self.main)
+            out = subprocess.check_output(f'{exports}node {entrypoint}', shell=True, encoding='utf-8', cwd=self.working_dir)
             print(out)
         else:
             print(f'dose not support {self.runtime}')

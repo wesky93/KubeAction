@@ -13,11 +13,4 @@ spec:
         - name: let's Run!
           id: request
           run: echo 'test'
-        - name: run one more time
-          id: request
-          run: |
-            echo 'second' |
-            pip3 list
-        - uses: actions/javascript-action@v1
-          with:
-            milliseconds: 3000
+        - uses: actions/checkout@v2
