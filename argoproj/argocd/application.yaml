@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubeaction-demo
+  namespace: kubeaction
+spec:
+  project: kubeaction
+  source:
+    repoURL: https://git.stargate.spaceone.dev/spaceone/kubeaction.git
+    targetRevision: argoproj # or a branch, master|HEAD
+    path: k8s/
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubeaction
+
+  # we will prune manually
+#  syncPolicy:
+#    automated:
+#      prune: true # Specifies if resources should be pruned during auto-syncing ( false by default ).
+#      selfHeal: false # Specifies if partial app sync should be executed when resources are changed only in target Kubernetes cluster and no git change detected ( false by default ).
