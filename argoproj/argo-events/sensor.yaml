@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: aws-sqs-kubeaction
+  namespace: argo-events
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  subscription:
+    http:
+      port: 9300
+  dependencies:
+    - name: kubeaction
+      gatewayName: aws-sqs-kubeaction
+      eventName: kubeaction
+  triggers:
+    - template:
+        # ref : https://github.com/argoproj/argo-events/blob/master/api/sensor.md#httptrigger
+        name: http-trigger
+        http:
+          url: http://a22b2eae0a6d511eaa1e3023afc37c3c-1381281042.ap-northeast-2.elb.amazonaws.com
+#          payload:
+#            - src:
+#                dependencyName: kubeaction
+#                dataKey: body
+#              dest: spec.arguments
+#            - src:
+#                dependencyName: kubeaction
+#                dataKey: body
+#              dest: text
+          method: GET

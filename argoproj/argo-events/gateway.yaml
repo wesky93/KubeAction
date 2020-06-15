@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Gateway
+metadata:
+  name: aws-sqs-kubeaction
+  namespace: argo-events
+spec:
+  type: sqs
+  eventSourceRef:
+    name: aws-sqs-kubeaction
+  template:
+    serviceAccountName: argo-events-sa
+  subscribers:
+    http:
+      - "http://aws-sqs-kubeaction-sensor.argo-events.svc:9300/"
