@@ -1,0 +1,120 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: flows.kubeaction.spaceone.dev
+spec:
+  scope: Namespaced
+  group: kubeaction.spaceone.dev
+  names:
+    kind: Flow
+    plural: flows
+    singular: flow
+    shortNames:
+      - fls
+      - fl
+  version: v1alpha1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: events.kubeaction.spaceone.dev
+spec:
+  scope: Namespaced
+  version: v1alpha1
+  group: kubeaction.spaceone.dev
+  names:
+    kind: Event
+    plural: events
+    singular: event
+    shortNames:
+      - evs
+      - ev
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: tasks.kubeaction.spaceone.dev
+spec:
+  scope: Namespaced
+  version: v1alpha1
+  group: kubeaction.spaceone.dev
+  names:
+    kind: Task
+    plural: tasks
+    singular: task
+    shortNames:
+      - tasks
+      - task
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kubeaction
+  name: kubeaction-server
+spec:
+  ports:
+    - port: 5000
+      protocol: TCP
+  selector:
+    app: kubeaction
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubeaction-server
+  labels:
+    app: kubeaction
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubeaction
+  template:
+    metadata:
+      labels:
+        app: kubeaction
+    spec:
+      containers:
+        - name: controller
+          image: spaceone/kubeaction-controller:latest
+          imagePullPolicy: Always
+          env:
+            - name: KUBEACTION_JOB_IMAGE
+              value: spaceone/kubeaction-job:latest
+            - name: KUBECTL_CONFIG_MODE
+              value: 'false'
+            - name: DIND_MODE
+              value: 'true'
+            - name: API_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: API_SERVICE
+              value: kubeaction-server
+            - name: API_PORT
+              value: '5000'
+        - name: api-server
+          image: spaceone/kubeaction-controller:latest
+          imagePullPolicy: Always
+          command:
+            - python
+            - /src/app.py
+          ports:
+            - containerPort: 5000
+          env:
+            - name: KUBEACTION_JOB_IMAGE
+              value: spaceone/kubeaction-job:latest
+            - name: KUBECTL_CONFIG_MODE
+              value: 'false'
+            - name: DIND_MODE
+              value: 'true'
+            - name: API_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: API_SERVICE
+              value: kubeaction-server
+            - name: API_PORT
+              value: '5000'
+

@@ -1,19 +1,39 @@
+import logging
 import os
 import sys
 from pathlib import Path
 from pprint import pprint
+from typing import List
 
 import kopf
 from dotenv import load_dotenv
 
 sys.path.append(os.path.dirname(__file__))
 
-from client_helper import ArgoCronWorkflowAPI, KubeActionEventAPI
-from schema import KubeActionEvent, ArgoCronWorkflow, FlowInfo
+try:
+    from client_helper import ArgoCronWorkflowAPI, KubeActionEventAPI, ArgoEventSourceAPI, ArgoSensorsAPI, \
+        ArgoGatewayAPI
+    from schema import KubeActionEvent, ArgoCronWorkflow, FlowInfo, ArgoWebHookEventSource, ArgoWebHookGateway, \
+        ArgoWebHookSensor
+except Exception as e:
+    from .client_helper import ArgoCronWorkflowAPI, KubeActionEventAPI, ArgoEventSourceAPI, ArgoSensorsAPI, \
+        ArgoGatewayAPI
+    from .schema import KubeActionEvent, ArgoCronWorkflow, FlowInfo, ArgoWebHookEventSource, ArgoWebHookGateway, \
+        ArgoWebHookSensor
 
 home = str(Path.home())
 load_dotenv(verbose=True)
 BASE_DIR = os.path.dirname(__file__)
+print(os.environ.get('API_SERVICE'), os.environ.get('API_NAMESPACE'))
+KUBEACTION_API = os.environ.get('KUBEACTION_API') \
+                 or f"{os.environ.get('API_SERVICE')}.{os.environ.get('API_NAMESPACE')}.svc.cluster.local:{os.environ.get('API_PORT')}"
+
+
+@kopf.on.startup()
+def configure(logger, settings: kopf.OperatorSettings, **_):
+    logger.info(os.environ.get('API_SERVICE'))
+    logger.info(os.environ.get('API_NAMESPACE'))
+    settings.posting.level = logging.DEBUG
 
 
 @kopf.on.create('kubeaction.spaceone.dev', 'v1alpha1', 'flows')
@@ -62,3 +82,94 @@ def create_events(body, spec, name, namespace, logger, **kwargs):
 @kopf.on.create('kubeaction.spaceone.dev', 'v1alpha1', 'tasks')
 def create(body, spec, name, namespace, logger, **kwargs):
     pass
+
+
+def make_trigger_template(url, dependency_names: List[str]):
+    payload = []
+    for event in dependency_names:
+        payload.append({
+            "src": {
+                "dependencyName": event,
+                "contextTemplate": "{{ .Input }}"
+            },
+            "dest": "context"
+        })
+        payload.append({
+            "src": {
+                "dependencyName": event,
+                "dataTemplate": "{{ .Input }}"
+            },
+            "dest": "data"
+        })
+    return {"template": {
+        "name": "kubeaction_event",
+        "http": {
+            "url": url,
+            "payload": payload
+        }
+    }}
+
+
+@kopf.on.create('kubeaction.spaceone.dev', 'v1alpha1', 'eventtypes')
+def create_event_types(body, spec, name, namespace, logger, **kwargs):
+    logger.info(f"{body}")
+    logger.info(f"{spec}")
+    event_type = spec.get('type')
+    event_type_name = spec.get('event_type_name')
+
+    if event_type == 'webhook':
+        # webhook example
+        # apiVersion: kubeaction.spaceone.dev/v1alpha1
+        # kind: EventType
+        # metadata:
+        #     name: webhook-event-sourc
+        #     spec:
+        #         type: webhook
+        #         event_type_name: ci-webhook
+        #         gateway_replica: 1
+        #         sensor_port: 9300
+        #         events:
+        #             intergraion:
+        #                 port: 12000
+        #                 endpoint: /intergraion
+        #                 method: POST
+        #             etc:
+        #                 port: 12001
+        #                 endpoint: /etc
+        #                 method: POST
+        raw_events = spec.get('events', {})
+        events = {}
+        sensor_port = spec.get('sensor_port')
+
+        service_ports = []
+        event_names = []
+        for k, v in raw_events.items():
+            port = v.get('port')
+            service_ports.append(port)
+            event_names.append(k)
+            events[k] = v
+            # event source port must string type
+            events[k]['port'] = f"{port}"
+
+        evs = ArgoWebHookEventSource(namespace, name, events)
+        evs_obj = evs.to_dict()
+        ArgoEventSourceAPI(namespace).create(body=evs_obj)
+        logger.info(evs_obj)
+        kopf.info(evs_obj, reason='Created', message='Gateway created')
+
+        ga = ArgoWebHookGateway(namespace, name, service_ports, sensor_port,
+                                replica=spec.get('gateway_replica'))
+        ga_obj = ga.to_dict()
+        pprint(ga_obj)
+        ArgoGatewayAPI(namespace).create(body=ga_obj)
+        logger.info(ga_obj)
+        kopf.info(ga_obj, reason='Created', message='Gateway created')
+
+        sensor = ArgoWebHookSensor(
+            namespace, name, event_names=event_names, sensor_port=sensor_port,
+            triggers=[make_trigger_template(KUBEACTION_API, event_names)]
+        )
+        sensor_obj = sensor.to_dict()
+        logger.info(sensor_obj)
+        ArgoSensorsAPI(namespace).create(body=sensor_obj)
+        kopf.info(sensor_obj, reason='Created', message='Sensor created')

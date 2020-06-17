@@ -1,3 +1,4 @@
+import os
 from functools import partial
 
 import kubernetes
@@ -9,7 +10,8 @@ class CustomObjectApi:
     plural = ""
 
     def __init__(self, namespace=None):
-        kubernetes.config.load_kube_config()
+        if not os.environ.get('KUBECTL_CONFIG_MODE', True) == 'false':
+            kubernetes.config.load_kube_config()
         self.api = kubernetes.client.CustomObjectsApi()
         self.namespace = namespace
 
@@ -50,6 +52,18 @@ class ArgoWorkflowAPI(ArgoAPI):
 
 class ArgoCronWorkflowAPI(ArgoAPI):
     plural = 'cronworkflows'
+
+
+class ArgoEventSourceAPI(ArgoAPI):
+    plural = 'eventsources'
+
+
+class ArgoGatewayAPI(ArgoAPI):
+    plural = 'gateways'
+
+
+class ArgoSensorsAPI(ArgoAPI):
+    plural = 'sensors'
 
 
 class KubeActionAPI(CustomObjectApi):

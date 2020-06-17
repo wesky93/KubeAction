@@ -3,7 +3,7 @@ import os
 import subprocess
 import tempfile
 from dataclasses import dataclass
-from pprint import pprint
+from time import sleep
 from typing import ItemsView
 from urllib.parse import urlparse
 
@@ -123,7 +123,7 @@ class RunStep(BaseStep):
 
 def download_docker_image(img: str):
     tag = None
-    client = docker.from_env()
+    client = docker.from_env(version='auto')
     url = urlparse(img)
     info = url.path.split(":")
     img_name = url.netloc + info[0]
@@ -200,7 +200,7 @@ class UsesStep(BaseStep):
 
         if self.runtime == 'docker':
             print('run', f"{self.meta}")
-            client = docker.from_env()
+            client = docker.from_env(version='auto')
             result = client.containers.run(
                 self.docker_img.id,
                 ['./entrypoint.sh'],
@@ -326,6 +326,10 @@ class KubeActionENV:
     def github_token(self):
         return os.environ.get('KUBEACTION_GITHUB_TOKEN', '')
 
+    @property
+    def dind_mode(self):
+        return os.environ.get('DIND_MODE', 'false') == 'true'
+
 
 def set_github_env(ctx: dict):
     data = {
@@ -363,6 +367,24 @@ if __name__ == '__main__':
     context = {
         "github": get_github_context(kube_env, workspace.name)
     }
+
+    if kube_env.dind_mode:
+        print('this is DinD Mode')
+        load = False
+        max_try = 10
+        while not load:
+            try:
+                client = docker.from_env(version='auto')
+                print('images', client.images.list())
+                print('docker load success')
+                load = True
+            except Exception as e:
+                max_try -= 1
+                print(f'fail to run docker {max_try} retry left')
+                if max_try == 0:
+                    raise e
+                sleep(2)
+
     job = Job(kube_env.job_name, kube_env.job, workspace, ctx=context)
     job.load()
     job.start()

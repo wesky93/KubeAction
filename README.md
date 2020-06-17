@@ -1,6 +1,6 @@
 # KubeAction
 
-Github Action on K*S!!
+Github Action on K8S!!
 
 this project is part of OpenAction Project.
 we will support you can use this in local, all any system.

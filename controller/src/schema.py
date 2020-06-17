@@ -11,7 +11,7 @@ load_dotenv(verbose=True)
 
 
 def get_uuid():
-    return shortuuid.uuid().lower()
+    return shortuuid.uuid().lower()[:5]
 
 
 class Resource:
@@ -35,7 +35,7 @@ class CustomObject(Resource):
         self.name = name
 
     def get_obj_name(self) -> str:
-        raise self.name
+        return self.name
 
     def get_spec(self) -> str:
         raise NotImplementedError('you must overwrite get_obj_name')
@@ -64,6 +64,133 @@ class ArgoObject(CustomObject):
     apiVersion = "argoproj.io/v1alpha1"
 
 
+class ArgoEventSource(ArgoObject):
+    kind = 'EventSource'
+
+    def __init__(self, namespace: str, name: str, _type: str, spec: dict = None):
+        super(ArgoEventSource, self).__init__(namespace, name)
+        self.type = _type
+        self.spec = spec or {}
+
+    def get_spec(self):
+        return {
+            "type": self.type,
+            **self.spec,
+        }
+
+
+class ArgoWebHookEventSource(ArgoEventSource):
+    def __init__(self, namespace: str, name: str, webhook: dict):
+        super(ArgoWebHookEventSource, self).__init__(namespace, name, _type="webhook")
+        self.spec = {
+            "webhook": webhook
+        }
+
+
+class ArgoGateway(ArgoObject):
+    kind = 'Gateway'
+
+    def __init__(self,
+                 namespace: str,
+                 name: str,
+                 _type: str,
+                 event_source_name: str,
+                 service: dict,
+                 subscribers: dict,
+                 replica: int = 1,
+                 service_account: str = "argo-events-sa",
+                 spec: dict = None):
+        super(ArgoGateway, self).__init__(namespace, name)
+        self.type = _type
+        self.replica = replica
+        self.event_source = {
+            "name": event_source_name
+        }
+        self.template = {
+            "serviceAccountName": service_account
+        }
+        self.service = service
+        self.subscribers = subscribers
+        self.spec = spec or {}
+
+    def get_spec(self):
+        return {
+            "type": self.type,
+            "replica": self.replica,
+            "template": self.template,
+            "eventSourceRef": self.event_source,
+            "service": self.service,
+            "subscribers": self.subscribers,
+            **self.spec,
+        }
+
+
+class ArgoWebHookGateway(ArgoGateway):
+    def __init__(self, namespace: str, name: str,
+                 service_ports: List[str],
+                 sensor_port: int,
+                 replica: int = 1,
+                 service_account: str = "argo-events-sa",
+                 spec: dict = None):
+        subscribers = {
+            "http": [f"http://{name}-sensor.{namespace}.svc:{sensor_port}/"]
+        }
+        service = {
+            "ports": [{"port": p, "targetPort": p} for p in service_ports]
+        }
+        super(ArgoWebHookGateway, self).__init__(
+            namespace, name, "webhook", event_source_name=name, replica=replica,
+            service=service, service_account=service_account, spec=spec, subscribers=subscribers
+        )
+
+
+class ArgoSensor(ArgoObject):
+    kind = 'Sensor'
+
+    def __init__(self,
+                 namespace: str,
+                 name: str,
+                 triggers: list,
+                 dependencies: List[dict],
+                 subscription: dict,
+                 service_account: str = "argo-events-sa",
+                 spec: dict = None):
+        super(ArgoSensor, self).__init__(namespace=namespace, name=name)
+        self.triggers = triggers
+        self.dependencies = dependencies
+        self.subscription = subscription
+        self.template = {
+            "serviceAccountName": service_account
+        }
+        self.spec = spec or {}
+
+    def get_spec(self):
+        return {
+            "subscription": self.subscription,
+            "dependencies": self.dependencies,
+            "triggers": self.triggers,
+            "template": self.template,
+            **self.spec,
+        }
+
+
+class ArgoWebHookSensor(ArgoSensor):
+    def __init__(self, namespace: str, name: str,
+                 event_names: List[str],
+                 sensor_port: int,
+                 triggers: list,
+                 service_account: str = "argo-events-sa",
+                 spec: dict = None):
+        subscription = {
+            "http": {"port": sensor_port}
+        }
+        dependencies = [{"name": name, "gatewayName": name, "eventName": n} for n in event_names]
+        super(ArgoWebHookSensor, self).__init__(
+            namespace=namespace, name=name, triggers=triggers, dependencies=dependencies, subscription=subscription,
+            service_account=service_account, spec=spec
+        )
+
+
 class StepsWorkflowTemplates(Resource):
     def __init__(self, template_names: List[str], name="jobs"):
         self.name = name
@@ -83,7 +210,7 @@ class JobWorkflowTemplate(Resource):
                  ):
         self.name = name
         self.job = job
-        self.image = image or os.environ.get('KUBEACTION_JOB_IMAGE')
+        self.image = image or os.environ.get('KUBEACTION_JOB_IMAGE', "spaceone/kubeaction-job:latest")
         self.cmd = cmd or ["python3 /src/job.py"]
         self.flow_info = flow_info
 
@@ -102,36 +229,41 @@ class JobWorkflowTemplate(Resource):
         return None
 
     def to_dict(self):
+        DIND_MODE = os.environ.get('DIND_MODE', 'false')
         env = [
             {"name": "KUBEACTION_NAME", "value": self.name},
             {"name": "KUBEACTION_JOB", "value": json.dumps(self.job)},
             {"name": "KUBEACTION_FLOW", "value": self.flow_info.name},
             {"name": "KUBEACTION_REPOSITORY", "value": self.flow_info.repo},
-            {"name": "DOCKER_HOST", "value": "127.0.0.1"},
+            {"name": "DOCKER_HOST", "value": "127.0.0.1:2375"},
+            {"name": "DIND_MODE", "value": DIND_MODE}
 
         ]
         github_token = self.get_github_token()
         if github_token:
             env.append(github_token)
-
-        return {
+        data = {
             "name": self.name,
             "container": {
                 "image": self.image,
+                "imagePullPolicy": "Always",
                 # "command": self.cmd,
                 "env": env
             },
-            # "sidecars": [
-            #     {
-            #         "name": "dind",
-            #         "image": "docker:17.10-dind",
-            #         "securityContext": {
-            #             "privileged": True,
-            #         },
-            #         "mirrorVolumeMounts": True
-            #     }
-            # ]
         }
+        if DIND_MODE == 'true':
+            data['sidecars'] = [
+                {
+                    "name": "dind",
+                    "image": "docker:17.10-dind",
+                    "securityContext": {
+                        "privileged": True,
+                    },
+                    "mirrorVolumeMounts": True
+                }
+            ]
+
+        return data
 
     @classmethod
     def from_flow_jobs(cls, jobs: dict, flow_info: FlowInfo) -> dict:
@@ -165,7 +297,8 @@ class ArgoWorkflow(ArgoObject):
     def get_spec(self):
         return {
             "entrypoint": self.entrypoint,
-            "templates": [t.to_dict() for t in self.templates]
+            "templates": [t.to_dict() for t in self.templates],
+            **self.spec,
         }
 
     @classmethod
@@ -222,7 +355,7 @@ class KubeActionEvent(KubeActionObject):
         self.jobs = jobs or []
 
     def get_obj_name(self):
-        return f"{self.name}-event-{self.event_type}"
+        return f"{self.name}-{self.event_type}"
 
     def get_spec(self):
         return {

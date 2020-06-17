@@ -1,7 +1,6 @@
 #!/bin/bash
-tag=spaceone/kubeaction-job:$1
-latest=spaceone/kubeaction-job:latest
-
+tag=spaceone/kubeaction-controller:$1
+latest=spaceone/kubeaction-controller:latest
 docker build -t $tag .  && docker push $tag
 docker build -t $latest .  && docker push $latest
 
