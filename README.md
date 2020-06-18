@@ -94,8 +94,9 @@ we will support you can use this in local, all any system.
     - [ ] icon
     
 ## Secrets
-support kubernetes secrets for workflow secrets
-our roadmap we will support other provider(aws secrets,vault) using [external-secrets](https://github.com/godaddy/kubernetes-external-secrets)
+support kubernetes secrets for workflow secrets.
+
+we will support other provider(aws secrets,vault) using [external-secrets](https://github.com/godaddy/kubernetes-external-secrets)
 ```yaml
 apiVersion: kubeaction.spaceone.dev/v1alpha1
 kind: Flow
