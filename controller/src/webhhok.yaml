@@ -1,0 +1,16 @@
+apiVersion: kubeaction.spaceone.dev/v1alpha1
+kind: EventType
+metadata:
+  name: webhook-event-source
+spec:
+  type: webhook
+  event_type_name: ci-webhook
+  events:
+    intergraion:
+      port: "12000"
+      endpoint: /intergraion
+      method: POST
+    etc:
+      port: "12001"
+      endpoint: /etc
+      method: POST

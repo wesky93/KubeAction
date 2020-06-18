@@ -1,0 +1,34 @@
+apiVersion: kubeaction.spaceone.dev/v1alpha1
+kind: Flow
+metadata:
+  name: test-github-checkout
+spec:
+  metadata:
+    repository: https://github.com/wesky93/test_action
+    secrets:
+      provider: kubernetes
+      name: action-test-secrets
+    github_token:
+      secrets_provider: kubernetes
+      name: spaceone-github
+      key: token
+
+  events:
+    schedule:
+      - cron:  '*/1 * * * *'
+  jobs:
+    first:
+      runs-on: ubuntu-latest
+      steps:
+        - name: showTest
+          id: request
+          run: echo 'test'
+        - name: showTest
+          id: request2
+          run: |
+            echo 'test'
+            echo 'test2'
+        - uses: actions/checkout@v2
+        - name: print
+          run: ls -al
+
