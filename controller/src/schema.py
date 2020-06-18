@@ -6,6 +6,7 @@ from typing import List
 import kopf
 import shortuuid
 from dotenv import load_dotenv
+from kopf.engines import logging
 
 load_dotenv(verbose=True)
 
@@ -24,6 +25,7 @@ class FlowInfo:
     name: str
     repo: str
     github_token: dict
+    secrets: dict
 
 
 class CustomObject(Resource):
@@ -239,6 +241,14 @@ class JobWorkflowTemplate(Resource):
             {"name": "DIND_MODE", "value": DIND_MODE}
 
         ]
+        volume_mounts = []
+        if self.flow_info.secrets:
+            if self.flow_info.secrets.get('provider') == 'kubernetes':
+                volume_mounts.append({
+                    "name": "secrets",
+                    "mountPath": "/secret/kubeaction",
+                    "readOnly": True,
+                })
         github_token = self.get_github_token()
         if github_token:
             env.append(github_token)
@@ -247,6 +257,7 @@ class JobWorkflowTemplate(Resource):
             "container": {
                 "image": self.image,
                 "imagePullPolicy": "Always",
+                "volumeMounts": volume_mounts,
                 # "command": self.cmd,
                 "env": env
             },
@@ -302,8 +313,16 @@ class ArgoWorkflow(ArgoObject):
         }
 
     @classmethod
-    def from_flow(cls, namespace: str, name: str, jobs: dict, flow_info: FlowInfo, **kwargs):
-        return cls(namespace, name, **JobWorkflowTemplate.from_flow_jobs(jobs=jobs, flow_info=flow_info), **kwargs)
+    def from_flow(cls, namespace: str, name: str, jobs: dict, flow_info: FlowInfo, spec: dict = {}, **kwargs):
+        logging.info(f"flow_info_secrets {flow_info.secrets}")
+        if flow_info.secrets:
+            if flow_info.secrets.get('provider') == 'kubernetes':
+                spec['volumes'] = [
+                    {"name": "secrets", "secret": {"secretName": flow_info.secrets.get('name')}}
+                ]
+        logging.info(f"{spec}")
+        return cls(namespace, name, **JobWorkflowTemplate.from_flow_jobs(jobs=jobs, flow_info=flow_info), spec=spec,
+                   **kwargs)
 
 
 class ArgoCronWorkflow(ArgoObject):
@@ -320,7 +339,7 @@ class ArgoCronWorkflow(ArgoObject):
         self.workflow_spec = workflow_spec or {}
 
     def get_obj_name(self):
-        return f"{self.name}-cwf-{get_uuid()}"
+        return f"{self.name}-cwf"
 
     def get_spec(self):
         return {
@@ -334,8 +353,18 @@ class ArgoCronWorkflow(ArgoObject):
         }
 
     @classmethod
-    def from_flow(cls, namespace: str, name: str, schedule: str, jobs: dict, flow_info, **kwargs):
+    def from_flow(cls, namespace: str, name: str, schedule: str, jobs: dict, flow_info: FlowInfo,
+                  workflow_spec: dict = {},
+                  **kwargs):
+        print("flow_info_secrets", flow_info.secrets)
+        if flow_info.secrets:
+            if flow_info.secrets.get('provider') == 'kubernetes':
+                workflow_spec['volumes'] = [
+                    {"name": "secrets", "secret": {"secretName": flow_info.secrets.get('name')}}
+                ]
+        print(workflow_spec)
         return cls(namespace, name, schedule, **JobWorkflowTemplate.from_flow_jobs(jobs=jobs, flow_info=flow_info),
+                   workflow_spec=workflow_spec,
                    **kwargs)
 
 

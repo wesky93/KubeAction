@@ -26,7 +26,7 @@ load_dotenv(verbose=True)
 BASE_DIR = os.path.dirname(__file__)
 print(os.environ.get('API_SERVICE'), os.environ.get('API_NAMESPACE'))
 KUBEACTION_API = os.environ.get('KUBEACTION_API') \
-                 or f"{os.environ.get('API_SERVICE')}.{os.environ.get('API_NAMESPACE')}.svc.cluster.local:{os.environ.get('API_PORT')}"
+                 or f"http://{os.environ.get('API_SERVICE')}.{os.environ.get('API_NAMESPACE')}.svc.cluster.local:{os.environ.get('API_PORT')}/events"
 
 
 @kopf.on.startup()
@@ -67,7 +67,8 @@ def create_events(body, spec, name, namespace, logger, **kwargs):
     flow_info = FlowInfo(
         name=name,
         repo=metadata.get('repository', ''),
-        github_token=metadata.get('github_token')
+        github_token=metadata.get('github_token'),
+        secrets=metadata.get('secrets'),
     )
     print(f"{flow_info.repo=}")
     if event_type == 'schedule':
@@ -84,7 +85,7 @@ def create(body, spec, name, namespace, logger, **kwargs):
     pass
 
 
-def make_trigger_template(url, dependency_names: List[str]):
+def make_trigger_template(url, event_type_name, dependency_names: List[str]):
     payload = []
     for event in dependency_names:
         payload.append({
@@ -100,6 +101,13 @@ def make_trigger_template(url, dependency_names: List[str]):
                 "dataTemplate": "{{ .Input }}"
             },
             "dest": "data"
+        })
+        payload.append({
+            "src": {
+                "dependencyName": event,
+                "value": event_type_name
+            },
+            "dest": "event_type_name"
         })
     return {"template": {
         "name": "kubeaction_event",
@@ -167,7 +175,7 @@ def create_event_types(body, spec, name, namespace, logger, **kwargs):
 
         sensor = ArgoWebHookSensor(
             namespace, name, event_names=event_names, sensor_port=sensor_port,
-            triggers=[make_trigger_template(KUBEACTION_API, event_names)]
+            triggers=[make_trigger_template(KUBEACTION_API, event_type_name, event_names)]
         )
         sensor_obj = sensor.to_dict()
         logger.info(sensor_obj)

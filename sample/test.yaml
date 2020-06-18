@@ -1,0 +1,58 @@
+kind: Flow
+apiVersion: kubeaction.spaceone.dev/v1alpha1
+metadata:
+  name: test-github-checkout
+  namespace: kubeaction
+spec:
+  metadata:
+    repository: https://git.stargate.spaceone.dev/spaceone/integration.git
+    secrets:
+      provider: kubernetes
+      name: ci-test-secrets
+
+  events:
+    schedule:
+      - cron: 18 14 * * *
+  jobs:
+    first:
+      runs-on: ubuntu-latest
+      steps:
+        - id: prepare
+          name: prepare
+          run: |
+            apt-get install python3-venv -y
+            git config --global user.name "root"
+
+            git clone
+            https://root:${{secrets.password}}@git.stargate.spaceone.dev/spaceone/integration.git
+            cd integration
+            ls
+            chmod 755 ./user_domains/pyvenv.sh
+            ./user_domains/pyvenv.sh
+            python3 -m venv venv
+
+        - id: install
+          name: install
+          run: |
+            cd integration
+            . venv/bin/activate
+            python --version
+            mkdir -p ./tmp/py_cache
+            pip install -r pkg/pip_requirements.txt --upgrade --cache-dir
+            ./tmp/py_cache
+
+
+            pip install spaceone-api --upgrade
+            pip install spaceone-core --upgrade
+            pip install spaceone-tester --upgrade
+            pip list
+
+        - id: test
+          name: test
+          run: |
+            cd integration
+            . venv/bin/activate
+            cd user_domains
+            ./run_test.sh
+            pwd
+            ls

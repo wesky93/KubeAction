@@ -1,8 +1,8 @@
 import json
-import os
 import subprocess
 import tempfile
 from dataclasses import dataclass
+from os import path, walk, environ
 from time import sleep
 from typing import ItemsView
 from urllib.parse import urlparse
@@ -11,6 +11,8 @@ import docker
 import git
 import yaml
 from jinja2 import Template
+
+from utils import files_list
 
 
 def get_yaml_file(filename):
@@ -92,12 +94,15 @@ class RunStep(BaseStep):
     def run(self):
         return self._data.get('run', '')
 
+    def get_script(self):
+        return template_render(self.run, self.ctx, secrets=self.secrets)
+
     def exec(self):
         print(self.run)
         sh = tempfile.NamedTemporaryFile()
 
         with open(sh.name, 'w') as f:
-            f.write(self.run)
+            f.write(self.get_script())
 
         try:
             out = subprocess.check_output(f'/bin/bash -e {sh.name}',
@@ -134,9 +139,6 @@ def download_docker_image(img: str):
     img = client.images.pull(img_name, tag=tag)
     print(f'finish download {img}')
     return img
-
-
-from os import walk
 
 
 def show_files(p):
@@ -222,7 +224,7 @@ class UsesStep(BaseStep):
             print(show_files(self.path))
             inputs = self.get_inputs_env().items()
             exports = "; ".join([f"export {k}={v}" for k, v in inputs]) + "; " if inputs else ""
-            entrypoint = os.path.join(self.path, self.main)
+            entrypoint = path.join(self.path, self.main)
             try:
                 out = subprocess.check_output(f'{exports}node {entrypoint}',
                                               shell=True,
@@ -244,7 +246,7 @@ class UsesStep(BaseStep):
         url = f'https://github.com/{url}'
         branch = meta['version'] or 'master'
         print('start download git')
-        self.path = os.path.join(self.working_dir, meta['name'])
+        self.path = path.join(self.working_dir, meta['name'])
         print(self.path, 'git pull path')
         self.repo = git.Repo.clone_from(url, self.path, branch=branch)
         print(f'finish {meta["name"]} git download')
@@ -308,27 +310,27 @@ class Job():
 class KubeActionENV:
     @property
     def flow_name(self):
-        return os.environ.get('KUBEACTION_FLOW')
+        return environ.get('KUBEACTION_FLOW')
 
     @property
     def job_name(self):
-        return os.environ.get('KUBEACTION_NAME')
+        return environ.get('KUBEACTION_NAME')
 
     @property
     def job(self):
-        return json.loads(os.environ.get('KUBEACTION_JOB', ''))
+        return json.loads(environ.get('KUBEACTION_JOB', ''))
 
     @property
     def repository(self):
-        return os.environ.get('KUBEACTION_REPOSITORY')
+        return environ.get('KUBEACTION_REPOSITORY')
 
     @property
     def github_token(self):
-        return os.environ.get('KUBEACTION_GITHUB_TOKEN', '')
+        return environ.get('KUBEACTION_GITHUB_TOKEN', '')
 
     @property
     def dind_mode(self):
-        return os.environ.get('DIND_MODE', 'false') == 'true'
+        return environ.get('DIND_MODE', 'false') == 'true'
 
 
 def set_github_env(ctx: dict):
@@ -339,7 +341,7 @@ def set_github_env(ctx: dict):
 
     }
     for k, v in data.items():
-        os.environ[k] = v
+        environ[k] = v
 
 
 def get_github_context(env: KubeActionENV, workspace: str):
@@ -360,8 +362,19 @@ def get_github_context(env: KubeActionENV, workspace: str):
     return ctx
 
 
+def load_secrets(mount_path='/secret/kubeaction'):
+    _secrets = {}
+    for f in files_list(mount_path):
+        with open(path.join(mount_path, f), 'r') as raw:
+            _secrets[f] = raw.read()
+
+    print('secrets', _secrets)
+    return _secrets
+
+
 if __name__ == '__main__':
     # get secrets
+    secrets = load_secrets()
     workspace = tempfile.TemporaryDirectory()
     kube_env = KubeActionENV()
     context = {
@@ -385,11 +398,9 @@ if __name__ == '__main__':
                     raise e
                 sleep(2)
 
-    job = Job(kube_env.job_name, kube_env.job, workspace, ctx=context)
+    job = Job(kube_env.job_name, kube_env.job, workspace, ctx=context, secrets=secrets)
     job.load()
     job.start()
 
-    # set job
-    # load resource
     # run job
     # export output

@@ -3,7 +3,7 @@
 Github Action on K8S!!
 
 this project is part of OpenAction Project.
-we will support you can use this in local, all any system.
+we will support you can use this in local, all any system. 
 
 ## support workflow syntax
 
@@ -56,7 +56,7 @@ we will support you can use this in local, all any system.
 - [ ] secrets
     - provider
         - [ ] spaceone secrets
-        - [ ] k8s
+        - [x] k8s
         - [ ] aws secretManager
         - [ ] vault
 - [ ] matrix
@@ -67,28 +67,45 @@ we will support you can use this in local, all any system.
 - [x] name
 - [x] author
 - [x] description
-- [] inputs
-    - [] input_id
-    - [] description
-    - [] required
-    - [] default
-- [] outputs
-- [] runs for JavaScript actions
+- [ ] inputs
+    - [ ] input_id
+    - [ ] description
+    - [ ] required
+    - [ ] default
+- [ ] outputs
+- [ ] runs for JavaScript actions
     - [x] using(node12)
-    - [] pre
-    - [] pre-if
+    - [ ] pre
+    - [ ] pre-if
     - [x] main
-    - [] post
-    - [] post-if
-- [] runs for Docker actions
+    - [ ] post
+    - [ ] post-if
+- [ ] runs for Docker actions
     - [x] using(docker)
-    - [] image
-        - [] Dockerfile
+    - [ ] image
+        - [ ] Dockerfile
         - [x] DockerHub url
-    - [] pre-entrypoint
+    - [ ] pre-entrypoint
     - [x] entrypoint 
-    - [] env
-    - [] args(only for Dockerfile)
-- [] branding
-    - [] color
-    - [] icon
+    - [ ] env
+    - [ ] args(only for Dockerfile)
+- [ ] branding
+    - [ ] color
+    - [ ] icon
+    
+## Secrets
+support kubernetes secrets for workflow secrets
+our roadmap we will support other provider(aws secrets,vault) using [external-secrets](https://github.com/godaddy/kubernetes-external-secrets)
+```yaml
+apiVersion: kubeaction.spaceone.dev/v1alpha1
+kind: Flow
+metadata:
+  name: test-secrets
+  namespace: kubeaction
+spec:
+  metadata:
+    repository: https://github.com/wesky93/test_action
+    secrets:
+      provider: kubernetes
+      name: action-test-secrets
+```

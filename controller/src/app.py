@@ -6,10 +6,10 @@ logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 
 
-@app.route("/")
+@app.route("/events", methods=['POST'])
 def hello():
     logging.info(f"{request}")
-    logging.info(f"{request.data}")
+    logging.info(f"data {request.json}")
     logging.info(f"{request.headers}")
     logging.info(f"{request.endpoint}")
 
