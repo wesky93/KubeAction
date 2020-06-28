@@ -28,6 +28,11 @@ print(os.environ.get('API_SERVICE'), os.environ.get('API_NAMESPACE'))
 KUBEACTION_API = os.environ.get('KUBEACTION_API') \
                  or f"http://{os.environ.get('API_SERVICE')}.{os.environ.get('API_NAMESPACE')}.svc.cluster.local:{os.environ.get('API_PORT')}/events"
 
+# https://github.com/zalando-incubator/kopf/issues/292#issuecomment-600672405
+@kopf.on.login()
+def login_fn(**kwargs):
+    return kopf.login_via_client(**kwargs)
+
 
 @kopf.on.startup()
 def configure(logger, settings: kopf.OperatorSettings, **_):
@@ -109,13 +114,15 @@ def make_trigger_template(url, event_type_name, dependency_names: List[str]):
             },
             "dest": "event_type_name"
         })
-    return {"template": {
-        "name": "kubeaction_event",
-        "http": {
-            "url": url,
-            "payload": payload
+    return {
+        "template": {
+            "name": "kubeaction_event",
+            "http": {
+                "url": url,
+                "payload": payload
+            }
         }
-    }}
+    }
 
 
 @kopf.on.create('kubeaction.spaceone.dev', 'v1alpha1', 'eventtypes')
