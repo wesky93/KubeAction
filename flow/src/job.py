@@ -99,13 +99,19 @@ class RunStep(BaseStep):
 
     def exec(self):
         print(self.run)
-        sh = tempfile.NamedTemporaryFile()
+        script_file = tempfile.NamedTemporaryFile()
 
-        with open(sh.name, 'w') as f:
+        with open(script_file.name, 'w') as f:
             f.write(self.get_script())
 
         try:
-            out = subprocess.check_output(f'/bin/bash -e {sh.name}',
+            # from subprocess import Popen, PIPE, STDOUT
+            #
+            # process = Popen(command_line_args, stdout=PIPE, stderr=STDOUT)
+            # with process.stdout:
+            #     log_subprocess_output(process.stdout)
+            # exitcode = process.wait()  # 0 means success
+            out = subprocess.check_output(f'/bin/bash -e {script_file.name}',
                                           shell=True,
                                           encoding='utf-8',
                                           stderr=subprocess.STDOUT,
@@ -114,7 +120,7 @@ class RunStep(BaseStep):
             print(exc.output)
             raise exc
         print(out)
-        sh.close()
+        script_file.close()
 
     def setup(self):
         pass
