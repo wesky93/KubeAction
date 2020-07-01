@@ -12,7 +12,7 @@ spec:
 
   events:
     schedule:
-      - cron: 18 14 * * *
+      - cron: "* * * * *"
   jobs:
     first:
       runs-on: ubuntu-latest
