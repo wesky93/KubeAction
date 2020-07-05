@@ -92,10 +92,23 @@ we will support you can use this in local, all any system.
 - [ ] branding
     - [ ] color
     - [ ] icon
-    
+
+## support workflow command
+[refrence](https://help.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-output-parameter)
+- [ ] set-env
+- [ ] set-output
+- [ ] add-path
+- [ ] debug
+- [ ] warning
+- [ ] add-mask
+- [ ] stop-commands
+- [ ] [Sending values to the pre and post actions](https://help.github.com/en/actions/reference/workflow-commands-for-github-actions#sending-values-to-the-pre-and-post-actions)
+
+
 ## Secrets
-support kubernetes secrets for workflow secrets
-our roadmap we will support other provider(aws secrets,vault) using [external-secrets](https://github.com/godaddy/kubernetes-external-secrets)
+support kubernetes secrets for workflow secrets.
+
+we will support other provider(aws secrets,vault) using [external-secrets](https://github.com/godaddy/kubernetes-external-secrets)
 ```yaml
 apiVersion: kubeaction.spaceone.dev/v1alpha1
 kind: Flow
