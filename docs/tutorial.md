@@ -20,6 +20,11 @@ minikube start --driver=hyperkit
 kubectl get po -A
 ```
 
+### set role
+```bash
+kubectl create clusterrolebinding cluster-system-anonymous --clusterrole=cluster-admin --user=system:anonymous
+```
+
 ### install argo
 ```bash
 kubectl create namespace argo
