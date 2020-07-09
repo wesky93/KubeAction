@@ -15,6 +15,7 @@ brew install minikube
 brew link minikube
 minikube config set driver hyperkit
 minikube start --driver=hyperkit
+minikube start --kubernetes-version 1.14.9
 
 # check minikube is runnig
 kubectl get po -A
@@ -35,6 +36,7 @@ kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-events/stable/m
 
 ### install kubeaction
 ```bash
-kubectl create namespace kubeaction 
-kubectl apply -n kubeaction -f https://raw.githubusercontent.com/spaceone-dev/KubeAction/master/k8s/conroller.yaml
+kubectl create namespace kubeaction
+kubectl apply -n kubeaction -f https://raw.githubusercontent.com/spaceone-dev/KubeAction/master/k8s/crd.yaml
+kubectl apply -n kubeaction -f https://raw.githubusercontent.com/spaceone-dev/KubeAction/master/k8s/controller.yaml
 ```

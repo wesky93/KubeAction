@@ -46,6 +46,8 @@ spec:
               value: kubeaction-server
             - name: API_PORT
               value: '5000'
+            - name: KUBE_PROXY
+              value: "http://localhost:8080"
         - name: api-server
           image: spaceone/kubeaction-controller:latest
           imagePullPolicy: Always
@@ -57,4 +59,11 @@ spec:
           env:
             - name: API_PORT
               value: '5000'
+            - name: KUBE_PROXY
+              value: "http://localhost:8080"
+        - name: kubectl-proxy
+          image: spaceone/kubectl-proxy:latest
+          ports:
+            - containerPort: 8080
+
 

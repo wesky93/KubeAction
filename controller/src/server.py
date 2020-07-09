@@ -3,10 +3,12 @@ import os
 import sys
 from pathlib import Path
 from pprint import pprint
-from typing import List
+from typing import List, Optional, Sequence
 
 import kopf
+import kubernetes
 from dotenv import load_dotenv
+from kopf.utilities.piggybacking import PRIORITY_OF_CLIENT
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -28,10 +30,36 @@ print(os.environ.get('API_SERVICE'), os.environ.get('API_NAMESPACE'))
 KUBEACTION_API = os.environ.get('KUBEACTION_API') \
                  or f"http://{os.environ.get('API_SERVICE')}.{os.environ.get('API_NAMESPACE')}.svc.cluster.local:{os.environ.get('API_PORT')}/events"
 
+
 # https://github.com/zalando-incubator/kopf/issues/292#issuecomment-600672405
 @kopf.on.login()
 def login_fn(**kwargs):
-    return kopf.login_via_client(**kwargs)
+    proxy = os.environ.get('KUBE_PROXY')
+    connect_info = kopf.login_via_client(**kwargs)
+    if proxy:
+        print('config proxy')
+        kubernetes.config.load_incluster_config()
+        config = kubernetes.client.Configuration()
+        config.proxy = proxy
+        header: Optional[str] = config.get_api_key_with_prefix('authorization')
+        parts: Sequence[str] = header.split(' ', 1) if header else []
+        scheme, token = ((None, None) if len(parts) == 0 else
+                         (None, parts[0]) if len(parts) == 1 else
+                         (parts[0], parts[1]))
+        return kopf.ConnectionInfo(
+            server=config.proxy,
+            # ca_path=config.ssl_ca_cert,  # can be a temporary file
+            insecure=False,
+            # username=config.username or None,  # an empty string when not defined
+            # password=config.password or None,  # an empty string when not defined
+            scheme='Bear',
+            token=token,
+            # certificate_path=config.cert_file,  # can be a temporary file
+            # private_key_path=config.key_file,  # can be a temporary file
+            priority=PRIORITY_OF_CLIENT,
+        )
+    else:
+        return connect_info
 
 
 @kopf.on.startup()
