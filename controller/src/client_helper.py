@@ -12,6 +12,12 @@ class CustomObjectApi:
     def __init__(self, namespace=None):
         if not os.environ.get('KUBECTL_CONFIG_MODE', True) == 'false':
             kubernetes.config.load_kube_config()
+        else:
+            kubernetes.config.load_incluster_config()
+            proxy = os.environ.get('KUBE_PROXY')
+            if proxy:
+                conf = kubernetes.client.Configuration()
+                conf.proxy = proxy
         self.api = kubernetes.client.CustomObjectsApi()
         self.namespace = namespace
 
