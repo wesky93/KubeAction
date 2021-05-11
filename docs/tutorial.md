@@ -40,3 +40,9 @@ kubectl create namespace kubeaction
 kubectl apply -n kubeaction -f https://raw.githubusercontent.com/spaceone-dev/KubeAction/master/k8s/crd.yaml
 kubectl apply -n kubeaction -f https://raw.githubusercontent.com/spaceone-dev/KubeAction/master/k8s/controller.yaml
 ```
+
+### run sample flow!
+kubectl apply -n kubeaction -f https://raw.githubusercontent.com/spaceone-dev/KubeAction/master/sample/simple-flow.yaml
+kubectl apply -n kubeaction -f https://raw.githubusercontent.com/spaceone-dev/KubeAction/master/sample/simple-flow-2.yaml
+kubectl apply -n kubeaction -f https://raw.githubusercontent.com/spaceone-dev/KubeAction/master/sample/simple-flow-3.yaml
+kubectl apply -n kubeaction -f https://raw.githubusercontent.com/spaceone-dev/KubeAction/master/sample/simple-flow-not-valid.yaml
