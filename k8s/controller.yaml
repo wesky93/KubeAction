@@ -29,11 +29,11 @@ spec:
     spec:
       containers:
         - name: controller
-          image: spaceone/kubeaction-controller:latest
+          image: wesky93/kubeaction-controller:latest
           imagePullPolicy: Always
           env:
             - name: KUBEACTION_JOB_IMAGE
-              value: spaceone/kubeaction-job:latest
+              value: wesky93/kubeaction-job:latest
             - name: KUBECTL_CONFIG_MODE
               value: 'false'
             - name: DIND_MODE
@@ -49,7 +49,7 @@ spec:
             - name: KUBE_PROXY
               value: "http://localhost:8080"
         - name: api-server
-          image: spaceone/kubeaction-controller:latest
+          image: wesky93/kubeaction-controller:latest
           imagePullPolicy: Always
           command:
             - python

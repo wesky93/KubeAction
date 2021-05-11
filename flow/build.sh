@@ -1,6 +1,6 @@
 #!/bin/bash
-tag=spaceone/kubeaction-job:$1
-latest=spaceone/kubeaction-job:latest
+tag=wesky93/kubeaction-job:$1
+latest=wesky93/kubeaction-job:latest
 
 docker build -t $tag .  && docker push $tag
 docker build -t $latest .  && docker push $latest

@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-latest=spaceone/kubeaction-job:latest
+latest=wesky93/kubeaction-job:latest
 docker push $latest
