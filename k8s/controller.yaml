@@ -67,3 +67,48 @@ spec:
             - containerPort: 8080
 
 
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kubeaction-operation-ns-role
+rules:
+- apiGroups: ["*"] # "" indicates the core API group
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubeaction-operation-cluster-role
+rules:
+- apiGroups: ["*"] # "" indicates the core API group
+  resources: ["*"]
+  verbs: ["*"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kubeaction-cluster-admin
+subjects:
+- kind: ServiceAccount
+  namespace: kubeaction
+  name: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubeaction-operation-cluster-role
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: kubeaction
+  name: kubeaction-ns-admin
+subjects:
+- kind: ServiceAccount
+  namespace: kubeaction
+  name: default
+roleRef:
+  apiGroup:  rbac.authorization.k8s.io
+  kind: Role
+  name: kubeaction-operation-ns-role
